@@ -1,9 +1,9 @@
-[![Build Status](https://circleci.com/gh/DCORP-BV/accounts.svg?style=shield&circle-token=8614946cae9ca4c33bb326a76e571e6e4ac1ff93)](https://circleci.com/gh/DCORP-BV/accounts/)
+[![Build Status](https://circleci.com/gh/DCORP-BV/Accounts.svg?style=shield&circle-token=572c9666f49d4f04d7b35b862af4d4f8d3b6545a)](https://circleci.com/gh/DCORP-BV/Accounts/)
 [![JavaScript Style
 Guide](https://img.shields.io/badge/code_style-standard-brightgreen.svg)](https://standardjs.com)
 
 [Latest Coverage
-Report](https://circleci.com/api/v1.1/project/github/DCORP-BV/accounts/latest/artifacts/0/home/ubuntu/dcorp/coverage/index.html?branch=master).
+Report](https://circleci.com/api/v1.1/project/github/DCORP-BV/Accounts/latest/artifacts/0/home/ubuntu/dcorp/coverage/index.html?branch=master).
 **Note**: this links to the latest report for the **master branch**, which is
 not necessarily associated with the current branch.
 
