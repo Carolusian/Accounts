@@ -245,8 +245,9 @@ contract MemberAccount is Dispatchable, IAccount, IEtherAccount, ITokenAccount, 
      * @param _passphraseHash Hash of the new passphrase 
      */
     function execute(address _target, uint _value, bytes _data, bytes32 _passphrase, bytes32 _passphraseHash) public payable authenticate(_passphrase, _passphraseHash) {
+        IMemberAccount _shared = IMemberAccount(shared);
         require(_target != address(this));
-        require(IMemberAccount(shared).isValidTarget(_target));
+        require(_shared.isValidTarget(_target));
 
         // TODO: Prevent internal call (test)
 

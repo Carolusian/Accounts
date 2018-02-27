@@ -1,5 +1,5 @@
-accounts_1_create_tests.js
-accounts_2_authentication_tests.js
-accounts_3_ether_tests.js
-accounts_4_token_tests.js
-accounts_5_execute_tests.js
+test/accounts_1_create_tests.js
+test/accounts_2_authentication_tests.js
+test/accounts_3_ether_tests.js
+test/accounts_4_token_tests.js
+test/accounts_5_execute_tests.js
