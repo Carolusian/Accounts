@@ -8,6 +8,7 @@ import "./token/observer/ITokenRepositoryObserver.sol";
 import "./token/observer/TokenRepositoryObserver.sol";
 import "../infrastructure/behaviour/state/Deployable.sol";
 import "../infrastructure/behaviour/observer/Observable.sol";
+import "../infrastructure/ownership/IMultiOwned.sol";
 
 /**
  * DCorpAccounts 
@@ -166,10 +167,7 @@ contract DCorpAccounts is Observable, TokenRepositoryObserver {
      * @return Whether the sender is allowed or not
      */
     function canRegisterObserver(address _observer) internal view returns (bool) {
-
-        // TODO: Require observer to be accepted proposal dcorp address
-
-        return isObserver(_observer);
+        return isObserver(_observer) || (IMultiOwned(drps).isOwner(_observer) && IMultiOwned(drpu).isOwner(_observer));
     }
 
 
@@ -207,13 +205,14 @@ contract DCorpAccounts is Observable, TokenRepositoryObserver {
      * @param _to Address that the tokens now belong to
      * @param _value Value of tokens that where received by the repository
      */
-    function onTokensDeposited(address _repository, address _token, address _to, uint _value) internal only_safe_account(_repository) {
+    function onTokensDeposited(address _repository, address _token, address _to, uint _value) internal {
+        require(_repository == _to);
         if (isObservedToken(_token)) {
-            Record storage record = accounts[_repository];
-            record.weight[_token] += _value; // Increase weight
+            uint prevWeight = accounts[_repository].weight[_token];
+            updateAccount(_repository, _token);
 
-            // Notfiy observers
-            _notifyTokenBalanceChanged(_token, _to, _value, true);
+            assert(prevWeight + _value >= prevWeight);
+            assert(prevWeight + _value == accounts[_repository].weight[_token]);
         }
     }
 
@@ -228,13 +227,14 @@ contract DCorpAccounts is Observable, TokenRepositoryObserver {
      * @param _from Address that the tokens used to belong to
      * @param _value Value of tokens that where withdrawn from the repository
      */
-    function onTokensWithdrawn(address _repository, address _token, address _from, uint _value) internal only_safe_account(_repository) {
+    function onTokensWithdrawn(address _repository, address _token, address _from, uint _value) internal {
+        require(_repository == _from);
         if (isObservedToken(_token)) {
-            Record storage record = accounts[_repository];
-            record.weight[_token] -= _value; // Decrease weight
+            uint prevWeight = accounts[_repository].weight[_token];
+            updateAccount(_repository, _token);
 
-            // Notfiy observers
-            _notifyTokenBalanceChanged(_token, _from, _value, false);
+            assert(prevWeight - _value <= prevWeight);
+            assert(prevWeight - _value == accounts[_repository].weight[_token]);
         }
     }
 
