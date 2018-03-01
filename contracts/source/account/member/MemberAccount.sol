@@ -249,9 +249,8 @@ contract MemberAccount is Dispatchable, IAccount, IEtherAccount, ITokenAccount, 
         require(_target != address(this));
         require(_shared.isValidTarget(_target));
 
-        // TODO: Prevent internal call (test)
-
-        if (!_target.call.value(_value)(_data)) {
+        // Call target
+        if ((_value == 0 && !_target.call(_data)) || !_target.call.value(_value)(_data)) {
             revert();
         }
 

@@ -38,6 +38,7 @@ contract('Accounts (Ether)', function (accounts) {
   let passphrase = '@@@ Some Random Passphrase @@@'
   let passphraseEncoded
   let passphraseHashed
+  let minEtherWithdrawAmount
 
   before(async function () {
     dcorpAccountsInstance = await DCorpAccounts.deployed()
@@ -50,11 +51,13 @@ contract('Accounts (Ether)', function (accounts) {
     let transaction = await dcorpAccountsInstance.createAccount(passphraseHashed)
     let log = await dcorpUtil.accounts.events.created.getLog(dcorpAccountsInstance, transaction)
     dispatcherInstance = MemberAccount.at(log.args.account)
+    minEtherWithdrawAmount = new BigNumber(
+      await sharedAccountInstance.minEtherWithdrawAmount.call())
   })
 
   it('accepts incomming ether', async function () {
     // Arrange
-    let amount = web3.utils.toWei('1', 'ether')
+    let amount = BigNumber.max(minEtherWithdrawAmount, web3.utils.toWei('1', 'ether'))
 
     let balanceBefore = new BigNumber(
       await web3.eth.getBalancePromise(dispatcherInstance.address))
@@ -71,10 +74,10 @@ contract('Accounts (Ether)', function (accounts) {
     assert.isTrue(balanceAfter.eq(balanceBefore.add(amount)), 'Ether did not arrive in the account')
   })
 
-  it('withdraws ether when the correct password is provided', async function () {
+  it('withdraws ether', async function () {
     // Arrange
     let beneficiary = accounts[accounts.length - 2]
-    let amount = new BigNumber(web3.utils.toWei('12', 'ether'))
+    let amount = BigNumber.max(minEtherWithdrawAmount, web3.utils.toWei('12', 'ether'))
     
     await dispatcherInstance.sendTransaction({
       value: amount
@@ -98,11 +101,39 @@ contract('Accounts (Ether)', function (accounts) {
       'Ether did not arrive at the beneficiary')
   })
 
+  it('fails to withdraw less than the min amount of ether', async function () {
+    // Arrange
+    let beneficiary = accounts[accounts.length - 1]
+    let amount = minEtherWithdrawAmount.sub(1)
+    
+    await dispatcherInstance.sendTransaction({
+      value: amount
+    })
+
+    let accountBalanceBefore = new BigNumber(
+      await web3.eth.getBalancePromise(dispatcherInstance.address))
+
+    // Act
+    try {
+      await dispatcherInstance.withdrawEtherTo(
+        beneficiary, amount, passphraseEncoded, passphraseHashed)
+      assert.isFalse(true, 'Error should have been thrown')
+    } catch (error) {
+      util.errors.throws(error, 'Should not withdraw')
+    }
+    
+    let accountBalanceAfter = new BigNumber(
+      await web3.eth.getBalancePromise(dispatcherInstance.address))
+
+    // Assert
+    assert.isTrue(accountBalanceAfter.eq(accountBalanceBefore), 'Ether was send from account')
+  })
+
   it('Pays withdraw fee to node when 2fa is disabled', async function () {
     // Arrange
     let node = accounts[accounts.length - 1]
     let beneficiary = accounts[accounts.length - 2]
-    let amount = new BigNumber(web3.utils.toWei('1', 'ether'))
+    let amount = BigNumber.max(minEtherWithdrawAmount, web3.utils.toWei('12', 'ether'))
 
     await dispatcherInstance.sendTransaction({
       value: amount
@@ -132,7 +163,7 @@ contract('Accounts (Ether)', function (accounts) {
   it('Omits withdraw fee when 2fa is enabled', async function () {
     // Arrange
     let beneficiary = accounts[accounts.length - 2]
-    let amount = new BigNumber(web3.utils.toWei('111', 'ether'))
+    let amount = BigNumber.max(minEtherWithdrawAmount, web3.utils.toWei('111', 'ether'))
 
     await dispatcherInstance.sendTransaction({value: amount})
     await dispatcherInstance.enable2fa(passphraseEncoded, passphraseHashed, {from: beneficiary})

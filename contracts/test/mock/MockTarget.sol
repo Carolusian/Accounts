@@ -17,6 +17,7 @@ contract MockTarget {
 
     Record[] private records;
 
+    event Called(address sender, uint value);
     event Logged(address sender, uint value);
     event LoggedParam(address indexed sender, uint indexed value, bytes32 indexed param);
 
@@ -37,5 +38,9 @@ contract MockTarget {
     function logParam(bytes32 _param) public payable {
         records.push(Record(msg.sender, msg.value, msg.data, _param));
         LoggedParam(msg.sender, msg.value, _param);
+    }
+
+    function () public payable {
+        Called(msg.sender, msg.value);
     }
 }

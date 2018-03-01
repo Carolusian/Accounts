@@ -75,7 +75,7 @@ contract DCorpMemberAccountShared is TransferableOwnership, IMemberAccount, IDCo
      * @return Wether the withdraw is valid
      */
     function isValidEtherWithdraw(address _to, uint _value) public view returns (bool) {
-        return _to != address(this) && _value > minEtherWithdrawAmount;
+        return _to != address(this) && _value >= minEtherWithdrawAmount;
     }
 
 
@@ -98,8 +98,7 @@ contract DCorpMemberAccountShared is TransferableOwnership, IMemberAccount, IDCo
      * @return Wether the withdraw is valid
      */
     function isValidTokenWithdraw(address _token, address _to, uint _value) public view returns (bool) {
-        uint min = minTokenWithdrawAmountOverwrites[_token] > 0 ? minTokenWithdrawAmountOverwrites[_token] : minTokenWithdrawAmount;
-        return _to != address(this) && _value > min;
+        return _to != address(this) && _value >= getMinTokenWithdrawAmount(_token);
     }
 
 
@@ -116,6 +115,18 @@ contract DCorpMemberAccountShared is TransferableOwnership, IMemberAccount, IDCo
         } else {
             minTokenWithdrawAmountOverwrites[_token] = _value;
         }
+    }
+
+
+    /**
+     * Gets the minimum token withdraw value to `_value` tokens 
+     * when withdrawing `_token`
+     *
+     * @param _token ERC20 token to withdraw from
+     * @return Minimum amount to withdraw in tokens
+     */
+    function getMinTokenWithdrawAmount(address _token) public view returns (uint) {
+        return minTokenWithdrawAmountOverwrites[_token] > 0 ? minTokenWithdrawAmountOverwrites[_token] : minTokenWithdrawAmount;
     }
 
 

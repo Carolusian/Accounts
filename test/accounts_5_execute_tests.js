@@ -33,6 +33,7 @@ contract('Accounts (Execute)', function (accounts) {
   let dcorpAccountsInstance
   let dispatcherInstance
   let targetInstance
+  let excludedTargetInstance
 
   // Settings
   let passphrase = '@@@ Some Random Passphrase @@@'
@@ -41,6 +42,7 @@ contract('Accounts (Execute)', function (accounts) {
 
   before(async function () {
     dcorpAccountsInstance = await DCorpAccounts.deployed()
+    excludedTargetInstance = await Target.deployed()
     passphraseEncoded = web3.eth.abi.encodeParameter('bytes32', web3.utils.fromAscii(passphrase))
     passphraseHashed = web3.utils.sha3(passphraseEncoded)
   })
@@ -52,10 +54,11 @@ contract('Accounts (Execute)', function (accounts) {
     targetInstance = await Target.new()
   })
 
-  it('can execute a forward call', async function () {
+  it('can execute a call', async function () {
     // Arrange
     let account = accounts[accounts.length - 1]
     let amount = web3.utils.toWei('12', 'ether')
+    let data = targetInstance.contract.log.getData()
 
     let recordCountBefore = new BigNumber(
       await targetInstance.getRecordCount.call())
@@ -64,7 +67,7 @@ contract('Accounts (Execute)', function (accounts) {
     await dispatcherInstance.execute(
       targetInstance.address,
       amount, 
-      targetInstance.contract.log.getData(),
+      data,
       passphraseEncoded, 
       passphraseHashed, 
       {value: amount})
@@ -76,7 +79,7 @@ contract('Accounts (Execute)', function (accounts) {
     assert.isTrue(recordCountAfter.eq(recordCountBefore.add('1')), 'Record was not created')
   })
 
-  it('logs an executed a forward call', async function () {
+  it('logs an executed call', async function () {
     // Arrange
     let account = accounts[accounts.length - 2]
     let amount = web3.utils.toWei('1', 'ether')
@@ -107,5 +110,45 @@ contract('Accounts (Execute)', function (accounts) {
 
     // Assert - Event log match
     await util.events.assert(targetInstance, expectedLog)
+  })
+
+  it('does not execute a call to itself', async function () {
+    // Arrange
+    let account = accounts[accounts.length - 1]
+    let amount = web3.utils.toWei('1', 'ether')
+
+    // Act
+    try {
+      await dispatcherInstance.execute(
+        dispatcherInstance.address,
+        amount, 
+        0x0,
+        passphraseEncoded, 
+        passphraseHashed, 
+        {value: amount})
+      assert.isFalse(true, 'Error should have been thrown')
+    } catch (error) {
+      util.errors.throws(error, 'Should not call')
+    }
+  })
+
+  it('does not execute a call to an exlcuded target', async function () {
+    // Arrange
+    let account = accounts[accounts.length - 1]
+    let amount = web3.utils.toWei('1', 'ether')
+
+    // Act
+    try {
+      await dispatcherInstance.execute(
+        excludedTargetInstance.address,
+        amount, 
+        0x0,
+        passphraseEncoded, 
+        passphraseHashed, 
+        {value: amount})
+      assert.isFalse(true, 'Error should have been thrown')
+    } catch (error) {
+      util.errors.throws(error, 'Should not call')
+    }
   })
 })

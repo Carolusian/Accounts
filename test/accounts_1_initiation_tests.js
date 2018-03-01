@@ -1,7 +1,7 @@
 /* global assert, it, artifacts, contract, before */
 
 /**
- * DCORP accounts tests
+ * DCORP initiation tests
  *
  * Test the creation of an account through DCORP
  *
@@ -11,6 +11,7 @@
 
 // Artifacts
 var DCorpAccounts = artifacts.require('DCorpAccounts')
+var MemberAccountShared = artifacts.require('DCorpMemberAccountShared')
 
 // Tools
 var BigNumber = require('bignumber.js')
@@ -25,13 +26,15 @@ var dcorpUtil = require('../modules/dcorp_util.js')
 var _config = require('../config')
 var config = _config.network.test
 
-contract('Accounts (Create)', function (accounts) {
+contract('Accounts (Initiation)', function (accounts) {
 
   // Contracts
   let dcorpAccountsInstance
+  let sharedAccountInstance
 
   before(async function () {
     dcorpAccountsInstance = await DCorpAccounts.deployed()
+    sharedAccountInstance = MemberAccountShared.at(await dcorpAccountsInstance.shared.call())
   })
 
   it('creates an account through dcorp', async function () {
@@ -74,5 +77,54 @@ contract('Accounts (Create)', function (accounts) {
 
     // Assert - Event log match
     await util.events.assert(dcorpAccountsInstance, expectedLog)
+  })
+
+  it('owner can set min ether withdraw amount', async function () {
+    // Arrange
+    let account = accounts[0]
+    let newValue = new BigNumber(web3.utils.toWei('2', 'ether'))
+
+    let before = new BigNumber(
+      await sharedAccountInstance.minEtherWithdrawAmount.call())
+    
+    // Make sure we're not updating to the old value
+    assert.isFalse(newValue.eq(before), 'Choose another value')
+
+    // Act
+    await sharedAccountInstance.setMinEtherWithdrawAmount(
+      newValue, {from: account})
+
+    let after = new BigNumber(
+      await sharedAccountInstance.minEtherWithdrawAmount.call())
+
+    // Assert
+    assert.isTrue(after.eq(newValue), 'Value was not updated correctly')
+  })
+
+  it('non owner cannot set min ether withdraw amount', async function () {
+    // Arrange
+    let account = accounts[1]
+    let newValue = new BigNumber(web3.utils.toWei('1', 'ether'))
+
+    let before = new BigNumber(
+      await sharedAccountInstance.minEtherWithdrawAmount.call())
+    
+    // Make sure we're not updating to the old value
+    assert.isFalse(newValue.eq(before), 'Choose another value')
+
+    // Act
+    try {
+      await sharedAccountInstance.setMinEtherWithdrawAmount(
+        newValue, {from: account})
+      assert.isFalse(true, 'Error should have been thrown')
+    } catch (error) {
+      util.errors.throws(error, 'Should not authenticate')
+    }
+    
+    let after = new BigNumber(
+      await sharedAccountInstance.minEtherWithdrawAmount.call())
+
+    // Assert
+    assert.isTrue(after.eq(before), 'Value was updated')
   })
 })

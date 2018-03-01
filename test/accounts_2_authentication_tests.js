@@ -53,6 +53,41 @@ contract('Accounts (Authentication)', function (accounts) {
     dispatcherInstance = MemberAccount.at(log.args.account)
   })
 
+  it('fails autentication when provided a wrong password', async function () {
+    // Arrange
+    let beneficiary = accounts[accounts.length - 2]
+    let amount = new BigNumber(web3.utils.toWei('1', 'ether'))
+
+    let newPassphrase = '### New Random Passphrase ###'
+    let newPassphraseEncoded = web3.eth.abi.encodeParameter('bytes32', web3.utils.fromAscii(newPassphrase))
+    let newPassphraseHashed = web3.utils.sha3(newPassphraseEncoded)
+
+    let wrongPassphrase = '||| Wrong Passphrase |||'
+    let wrongPassphraseEncoded = web3.eth.abi.encodeParameter('bytes32', web3.utils.fromAscii(wrongPassphrase))
+
+    await dispatcherInstance.sendTransaction({
+      value: amount
+    })
+
+    let accountBalanceBefore = new BigNumber(
+      await web3.eth.getBalancePromise(dispatcherInstance.address))
+
+    // Act
+    try {
+      await dispatcherInstance.withdrawEtherTo(
+        beneficiary, amount, wrongPassphraseEncoded, newPassphraseHashed)
+      assert.isFalse(true, 'Error should have been thrown')
+    } catch (error) {
+      util.errors.throws(error, 'Should not authenticate')
+    }
+    
+    let accountBalanceAfter = new BigNumber(
+      await web3.eth.getBalancePromise(dispatcherInstance.address))
+
+    // Assert
+    assert.isTrue(accountBalanceAfter.eq(accountBalanceBefore), 'Ether was send from account')
+  })
+
   it('resets passphrase', async function () {
     // Arrange
     let beneficiary = accounts[accounts.length - 2]
@@ -104,6 +139,37 @@ contract('Accounts (Authentication)', function (accounts) {
     // Assert
     assert.isTrue(accountBalanceAfter.eq(accountBalanceBefore.add(amount).sub(transactionCosts)), 
       'Ether did not arrive at the beneficiary')
+  })
+
+  it('enforces 2fa', async function () {
+    // Arrange
+    let beneficiary = accounts[accounts.length - 1]
+    let other = accounts[accounts.length - 2]
+    let amount = new BigNumber(web3.utils.toWei('1', 'ether'))
+
+    await dispatcherInstance.sendTransaction({value: amount})
+    await dispatcherInstance.enable2fa(passphraseEncoded, passphraseHashed, {from: beneficiary})
+
+    let accountBalanceBefore = new BigNumber(
+      await web3.eth.getBalancePromise(beneficiary))
+
+    // Act
+    try {
+      await dispatcherInstance.withdrawEther( 
+        amount, 
+        passphraseEncoded, 
+        passphraseHashed,
+        {from: other})
+      assert.isFalse(true, 'Error should have been thrown')
+    } catch (error) {
+      util.errors.throws(error, 'Should not authenticate')
+    }
+
+    let accountBalanceAfter = new BigNumber(
+      await web3.eth.getBalancePromise(beneficiary))
+
+    // Assert
+    assert.isTrue(accountBalanceAfter.eq(accountBalanceBefore), 'Ether was send from account')
   })
 
   it('disables 2fa', async function () {

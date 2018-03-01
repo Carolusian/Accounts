@@ -8,6 +8,7 @@ var DCorpMemberAccountShared = artifacts.require('DCorpMemberAccountShared')
 
 // Test
 var EVM = artifacts.require('EVM')
+var ExcludedTarget = artifacts.require('MockTarget')
 
 // Events
 var preDeploy = () => Promise.resolve()
@@ -20,6 +21,7 @@ const deploy = async function(deployer, network, accounts, config) {
   util.setAccounts(accounts)
 
   let drpsTokenAddress, drpuTokenAddress
+  let excludedTargets = [drpsTokenAddress, drpuTokenAddress]
 
   // DRPS
   if (typeof config.token.security === 'string') {
@@ -45,6 +47,9 @@ const deploy = async function(deployer, network, accounts, config) {
   if (network == 'develop' || network == 'test') {
     preDeploy = async () => {
       await deployer.deploy(EVM)
+      await deployer.deploy(ExcludedTarget)
+      let excludedTarget = await ExcludedTarget.deployed()
+      excludedTargets.push(excludedTarget.address)
     }
   }
 
@@ -56,7 +61,7 @@ const deploy = async function(deployer, network, accounts, config) {
     DCorpAccounts, 
     drpsTokenAddress, 
     drpuTokenAddress, 
-    [drpsTokenAddress, drpuTokenAddress],
+    excludedTargets,
     config.withdraw.fee.percentage, 
     Math.pow(10, config.withdraw.fee.precision),
     util.config.getWeiValue(config.withdraw.min.ether),

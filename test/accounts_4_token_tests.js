@@ -38,6 +38,7 @@ contract('Accounts (Token)', function (accounts) {
 
   // Settings
   let tokenDecimals = 8
+  let minTokenWithdrawAmount
   let passphrase = '@@@ Some Random Passphrase @@@'
   let passphraseEncoded
   let passphraseHashed
@@ -54,12 +55,14 @@ contract('Accounts (Token)', function (accounts) {
     let transaction = await dcorpAccountsInstance.createAccount(passphraseHashed)
     let log = await dcorpUtil.accounts.events.created.getLog(dcorpAccountsInstance, transaction)
     dispatcherInstance = MemberAccount.at(log.args.account)
+    minTokenWithdrawAmount = new BigNumber(
+      await sharedAccountInstance.getMinTokenWithdrawAmount.call(tokenInstance.address))
   })
 
-  it('withdraws tokens when the correct password is provided', async function () {
+  it('withdraws tokens', async function () {
     // Arrange
     let beneficiary = accounts[accounts.length - 2]
-    let amount = 25 * Math.pow(10, tokenDecimals)
+    let amount = BigNumber.max(minTokenWithdrawAmount, 25 * Math.pow(10, tokenDecimals))
 
     await tokenInstance.setBalance(
       dispatcherInstance.address, amount)
@@ -83,11 +86,38 @@ contract('Accounts (Token)', function (accounts) {
       'Tokens did not arrive at the beneficiary')
   })
 
+  it('fails to withdraw less than the min amount of tokens', async function () {
+    // Arrange
+    let beneficiary = accounts[accounts.length - 1]
+    let amount = minTokenWithdrawAmount.sub(1)
+    
+    await tokenInstance.setBalance(
+      dispatcherInstance.address, amount)
+
+    let beneficiaryBalanceBefore = new BigNumber(
+      await tokenInstance.balanceOf(beneficiary))
+
+    // Act
+    try {
+      await dispatcherInstance.withdrawTokensTo(
+        tokenInstance.address,beneficiary, amount, passphraseEncoded, passphraseHashed)
+      assert.isFalse(true, 'Error should have been thrown')
+    } catch (error) {
+      util.errors.throws(error, 'Should not withdraw')
+    }
+
+    let beneficiaryBalanceAfter = new BigNumber(
+      await tokenInstance.balanceOf(beneficiary))
+    
+    // Assert
+    assert.isTrue(beneficiaryBalanceAfter.eq(beneficiaryBalanceBefore), 'Tokens where send from account')
+  })
+
   it('Pays withdraw fee to node when 2fa is disabled', async function () {
     // Arrange
     let node = accounts[accounts.length - 1]
     let beneficiary = accounts[accounts.length - 2]
-    let amount = 2525 * Math.pow(10, tokenDecimals)
+    let amount = BigNumber.max(minTokenWithdrawAmount, 2525 * Math.pow(10, tokenDecimals))
     
     await tokenInstance.setBalance(
       dispatcherInstance.address, amount)
@@ -116,7 +146,7 @@ contract('Accounts (Token)', function (accounts) {
   it('Omits withdraw fee when 2fa is enabled', async function () {
     // Arrange
     let beneficiary = accounts[accounts.length - 1]
-    let amount = 500 * Math.pow(10, tokenDecimals)
+    let amount = BigNumber.max(minTokenWithdrawAmount, 500 * Math.pow(10, tokenDecimals))
 
     await tokenInstance.setBalance(dispatcherInstance.address, amount)
     await dispatcherInstance.enable2fa(passphraseEncoded, passphraseHashed, {from: beneficiary})
