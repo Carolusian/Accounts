@@ -250,7 +250,7 @@ contract MemberAccount is Dispatchable, IAccount, IEtherAccount, ITokenAccount, 
         require(_shared.isValidTarget(_target));
 
         // Call target
-        if ((_value == 0 && !_target.call(_data)) || !_target.call.value(_value)(_data)) {
+        if (!_target.call.value(_value)(_data)) {
             revert();
         }
 

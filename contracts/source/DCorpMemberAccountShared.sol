@@ -154,7 +154,7 @@ contract DCorpMemberAccountShared is TransferableOwnership, IMemberAccount, IDCo
             return 0;
         }
 
-        uint amount = _included ? _value / (denominator + withdrawFeePercentage) * denominator : _value;
+        uint amount = _included ? _value * denominator / (denominator + withdrawFeePercentage) : _value;
         return amount * withdrawFeePercentage / denominator;
     }
 }
