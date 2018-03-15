@@ -4,7 +4,7 @@ var util = require('../modules/util')
 
 // Contracts
 var DCorpAccounts = artifacts.require('DCorpAccounts')
-var DCorpMemberAccountShared = artifacts.require('DCorpMemberAccountShared')
+var MemberAccountShared = artifacts.require('MemberAccountShared')
 
 // Test
 var EVM = artifacts.require('EVM')
@@ -61,11 +61,21 @@ const deploy = async function(deployer, network, accounts, config) {
     DCorpAccounts, 
     drpsTokenAddress, 
     drpuTokenAddress, 
+    util.config.getWeiValue(config.lock.stake),
+    util.config.getDurationValue(config.lock.duration),
     excludedTargets,
     config.withdraw.fee.percentage, 
     Math.pow(10, config.withdraw.fee.precision),
     util.config.getWeiValue(config.withdraw.min.ether),
     config.withdraw.min.tokens)
+
+  let dcorpAccounts = await DCorpAccounts.deployed()
+  let shared = MemberAccountShared.at(await dcorpAccounts.shared.call())
+
+  // Add trusted nodes
+  config.lock.nodes.forEach(async node => {
+    await shared.addNode(util.config.getAccountValue(node))
+  });
 
   // Post-init
   await postDeploy()

@@ -72,16 +72,18 @@ contract DCorpAccounts is Observable, TokenRepositoryObserver {
      *
      * @param _drpu 1/2 observed tokens
      * @param _drps 2/2 observed tokens
-     * @param _disallowed Addresses that are not allowed as proxy target
+     * @param _lockStake Min amount of wei required to obtain a lock
+     * @param _lockDuration Time that a lock is valid
+     * @param _disallowedProxyTargets Addresses that are not allowed as proxy target
      * @param _withdrawFee Percentage of the withdrawn amount that makes up the fee
      * @param _denominator Precesion used to calculate withdraw fee
      * @param _minEthWithdrawAmount Minimum amount to withdraw in wei
      * @param _minTokenWithdrawAmount Minimum amount to withdraw in tokens
      */
-    function DCorpAccounts(address _drpu, address _drps, address[] _disallowed, uint _withdrawFee, uint _denominator, uint _minEthWithdrawAmount, uint _minTokenWithdrawAmount) public {
+    function DCorpAccounts(address _drpu, address _drps, uint _lockStake, uint _lockDuration, address[] _disallowedProxyTargets, uint _withdrawFee, uint _denominator, uint _minEthWithdrawAmount, uint _minTokenWithdrawAmount) public {
         drpu = IToken(_drpu);
         drps = IToken(_drps);
-        shared = new DCorpMemberAccountShared(_disallowed);
+        shared = new DCorpMemberAccountShared(_lockStake, _lockDuration, _disallowedProxyTargets);
         shared.setWithdrawFee(_withdrawFee, _denominator);
         shared.setMinEtherWithdrawAmount(_minEthWithdrawAmount);
         shared.setMinTokenWithdrawAmount(0x0, _minTokenWithdrawAmount);

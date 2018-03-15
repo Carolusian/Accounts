@@ -1,6 +1,11 @@
 module.exports = {
     network: {
         test: {
+            lock: {
+                stake: [100, 'finney'],
+                duration: [10, 'minutes'],
+                nodes: [0]
+            },
             withdraw: {
                 fee: {
                     precision: 4, // Amount of decimals
@@ -21,6 +26,11 @@ module.exports = {
             }
         }, 
         main: {
+            lock: {
+                stake: [100, 'finney'],
+                duration: [10, 'minutes'],
+                nodes: ['']
+            },
             withdraw: {
                 fee: {
                     precision: 4, // Amount of decimals

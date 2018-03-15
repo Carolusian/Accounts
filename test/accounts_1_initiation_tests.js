@@ -20,6 +20,7 @@ var Web3Factory = require('../modules/web3_factory')
 
 // Modules
 var web3 = Web3Factory.create({testrpc: true})
+var time = require('../modules/time')
 var util = require('../modules/util')
 var dcorpUtil = require('../modules/dcorp_util.js')
 
@@ -229,5 +230,200 @@ contract('Accounts (Initiation)', function (accounts) {
 
     // Assert
     assert.isTrue(after.eq(before), 'Value was updated')
+  })
+
+  it('owner can set lock stake', async function () {
+    // Arrange
+    let account = accounts[0]
+    let newValue = new BigNumber(web3.utils.toWei('250', 'finney'))
+
+    let before = new BigNumber(
+      await sharedAccountInstance.lockStake.call())
+    
+    // Make sure we're not updating to the old value
+    assert.isFalse(newValue.eq(before), 'Choose another value')
+
+    // Act
+    await sharedAccountInstance.setLockStake(
+      newValue, {from: account})
+
+    let after = new BigNumber(
+      await sharedAccountInstance.lockStake.call())
+
+    // Assert
+    assert.isTrue(after.eq(newValue), 'Value was not updated correctly')
+  })
+
+  it('non owner cannot set lock stake', async function () {
+    // Arrange
+    let account = accounts[1]
+    let newValue = new BigNumber(web3.utils.toWei('50', 'finney'))
+
+    let before = new BigNumber(
+      await sharedAccountInstance.lockStake.call())
+    
+    // Make sure we're not updating to the old value
+    assert.isFalse(newValue.eq(before), 'Choose another value')
+
+    // Act
+    try {
+      await sharedAccountInstance.setLockStake(
+        newValue, {from: account})
+      assert.isFalse(true, 'Error should have been thrown')
+    } catch (error) {
+      util.errors.throws(error, 'Should not authenticate')
+    }
+    
+    let after = new BigNumber(
+      await sharedAccountInstance.lockStake.call())
+
+    // Assert
+    assert.isTrue(after.eq(before), 'Value was updated')
+  })
+
+  it('owner can set lock duration', async function () {
+    // Arrange
+    let account = accounts[0]
+    let newValue = new BigNumber((5 * time.minutes).toString())
+
+    let before = new BigNumber(
+      await sharedAccountInstance.lockDuration.call())
+    
+    // Make sure we're not updating to the old value
+    assert.isFalse(newValue.eq(before), 'Choose another value')
+
+    // Act
+    await sharedAccountInstance.setLockDuration(
+      newValue, {from: account})
+
+    let after = new BigNumber(
+      await sharedAccountInstance.lockDuration.call())
+
+    // Assert
+    assert.isTrue(after.eq(newValue), 'Value was not updated correctly')
+  })
+
+  it('non owner cannot set lock duration', async function () {
+    // Arrange
+    let account = accounts[1]
+    let newValue = new BigNumber((15 * time.minutes).toString())
+
+    let before = new BigNumber(
+      await sharedAccountInstance.lockDuration.call())
+    
+    // Make sure we're not updating to the old value
+    assert.isFalse(newValue.eq(before), 'Choose another value')
+
+    // Act
+    try {
+      await sharedAccountInstance.setLockDuration(
+        newValue, {from: account})
+      assert.isFalse(true, 'Error should have been thrown')
+    } catch (error) {
+      util.errors.throws(error, 'Should not authenticate')
+    }
+    
+    let after = new BigNumber(
+      await sharedAccountInstance.lockDuration.call())
+
+    // Assert
+    assert.isTrue(after.eq(before), 'Value was updated')
+  })
+
+  it('owner can add a node', async function () {
+    // Arrange
+    let account = accounts[0]
+    let newNode = accounts[accounts.length - 1]
+
+    let before = await sharedAccountInstance.isNode.call(newNode)
+    
+    // Make sure we're not updating to the old value
+    assert.isFalse(before, 'Choose another address')
+
+    // Act
+    await sharedAccountInstance.addNode(
+      newNode, {from: account})
+
+    let after = await sharedAccountInstance.isNode.call(newNode)
+
+    // Assert
+    assert.isTrue(after, 'Node was not added correctly')
+  })
+
+  it('non owner cannot add a node', async function () {
+    // Arrange
+    let account = accounts[1]
+    let newNode = accounts[accounts.length - 2]
+
+    let before = await sharedAccountInstance.isNode.call(newNode)
+    
+    // Make sure we're not updating to the old value
+    assert.isFalse(before, 'Choose another address')
+
+    // Act
+    try {
+      await sharedAccountInstance.addNode(
+        newNode, {from: account})
+      assert.isFalse(true, 'Error should have been thrown')
+    } catch (error) {
+      util.errors.throws(error, 'Should not authenticate')
+    }
+    
+    let after = await sharedAccountInstance.isNode.call(newNode)
+
+    // Assert
+    assert.isFalse(after, 'Node was added')
+  })
+
+  it('owner can remove a node', async function () {
+    // Arrange
+    let account = accounts[0]
+    let node = accounts[accounts.length - 1]
+
+    await sharedAccountInstance.addNode(
+      node, {from: account})
+
+    let before = await sharedAccountInstance.isNode.call(node)
+    
+    // Address should be a valid node
+    assert.isTrue(before, 'Invalid node')
+
+    // Act
+    await sharedAccountInstance.removeNode(
+      node, {from: account})
+
+    let after = await sharedAccountInstance.isNode.call(node)
+
+    // Assert
+    assert.isFalse(after, 'Node was not removed correctly')
+  })
+
+  it('non owner cannot remove a node', async function () {
+    // Arrange
+    let owner = accounts[0]
+    let account = accounts[1]
+    let node = accounts[accounts.length - 1]
+
+    await sharedAccountInstance.addNode(
+      node, {from: owner})
+
+    let before = await sharedAccountInstance.isNode.call(node)
+  
+    // Address should be a valid node
+    assert.isTrue(before, 'Invalid node')
+
+    // Act
+    try {
+      await sharedAccountInstance.removeNode(
+        node, {from: account})
+      assert.isFalse(true, 'Error should have been thrown')
+    } catch (error) {
+      util.errors.throws(error, 'Should not authenticate')
+    }
+    
+    let after = await sharedAccountInstance.isNode.call(node)
+
+    // Assert
+    assert.isTrue(after, 'Node was removed')
   })
 })

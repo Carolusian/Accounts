@@ -42,6 +42,8 @@ contract('Accounts (Token)', function (accounts) {
   let passphrase = '@@@ Some Random Passphrase @@@'
   let passphraseEncoded
   let passphraseHashed
+  let lockStake
+  let node = accounts[accounts.length - 1]
 
   before(async function () {
     dcorpAccountsInstance = await DCorpAccounts.deployed()
@@ -57,6 +59,9 @@ contract('Accounts (Token)', function (accounts) {
     dispatcherInstance = MemberAccount.at(log.args.account)
     minTokenWithdrawAmount = new BigNumber(
       await sharedAccountInstance.getMinTokenWithdrawAmount.call(tokenInstance.address))
+
+    lockStake = new BigNumber(await sharedAccountInstance.lockStake.call())
+    await sharedAccountInstance.addNode(node)
   })
 
   it('withdraws tokens', async function () {
@@ -100,7 +105,7 @@ contract('Accounts (Token)', function (accounts) {
     // Act
     try {
       await dispatcherInstance.withdrawTokensTo(
-        tokenInstance.address,beneficiary, amount, passphraseEncoded, passphraseHashed)
+        tokenInstance.address, beneficiary, amount, passphraseEncoded, passphraseHashed)
       assert.isFalse(true, 'Error should have been thrown')
     } catch (error) {
       util.errors.throws(error, 'Should not withdraw')
@@ -115,7 +120,6 @@ contract('Accounts (Token)', function (accounts) {
 
   it('Pays withdraw fee to node when 2fa is disabled', async function () {
     // Arrange
-    let node = accounts[accounts.length - 1]
     let beneficiary = accounts[accounts.length - 2]
     let amount = BigNumber.max(minTokenWithdrawAmount, 2525 * Math.pow(10, tokenDecimals))
     
@@ -149,6 +153,7 @@ contract('Accounts (Token)', function (accounts) {
     let amount = BigNumber.max(minTokenWithdrawAmount, 500 * Math.pow(10, tokenDecimals))
 
     await tokenInstance.setBalance(dispatcherInstance.address, amount)
+    await sharedAccountInstance.lock(dispatcherInstance.address, {from: beneficiary, value: lockStake})
     await dispatcherInstance.enable2fa(passphraseEncoded, passphraseHashed, {from: beneficiary})
 
     let beneficiaryBalanceBefore = new BigNumber(

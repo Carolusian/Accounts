@@ -39,6 +39,8 @@ contract('Accounts (Ether)', function (accounts) {
   let passphraseEncoded
   let passphraseHashed
   let minEtherWithdrawAmount
+  let lockStake
+  let node = accounts[accounts.length - 1]
 
   before(async function () {
     dcorpAccountsInstance = await DCorpAccounts.deployed()
@@ -53,6 +55,9 @@ contract('Accounts (Ether)', function (accounts) {
     dispatcherInstance = MemberAccount.at(log.args.account)
     minEtherWithdrawAmount = new BigNumber(
       await sharedAccountInstance.minEtherWithdrawAmount.call())
+
+    lockStake = new BigNumber(await sharedAccountInstance.lockStake.call())
+    await sharedAccountInstance.addNode(node)
   })
 
   it('accepts incomming ether', async function () {
@@ -131,7 +136,6 @@ contract('Accounts (Ether)', function (accounts) {
 
   it('Pays withdraw fee to node when 2fa is disabled', async function () {
     // Arrange
-    let node = accounts[accounts.length - 1]
     let beneficiary = accounts[accounts.length - 2]
     let amount = BigNumber.max(minEtherWithdrawAmount, web3.utils.toWei('12', 'ether'))
 
@@ -166,6 +170,7 @@ contract('Accounts (Ether)', function (accounts) {
     let amount = BigNumber.max(minEtherWithdrawAmount, web3.utils.toWei('111', 'ether'))
 
     await dispatcherInstance.sendTransaction({value: amount})
+    await sharedAccountInstance.lock(dispatcherInstance.address, {from: beneficiary, value: lockStake})
     await dispatcherInstance.enable2fa(passphraseEncoded, passphraseHashed, {from: beneficiary})
 
     let beneficiaryBalanceBefore = new BigNumber(

@@ -1,0 +1,339 @@
+/* global assert, it, artifacts, contract, before */
+
+/**
+ * DCORP accounts tests
+ *
+ * Test account lock
+ * - Require lock for call from account
+ * - Don't require lock for call from node
+ * - Don't require lock for call when 2fa is enabled
+ *
+ * #created 15/03/2018
+ * #author Frank Bonnet
+ */
+
+// Artifacts
+var DCorpAccounts = artifacts.require('DCorpAccounts')
+var MemberAccount = artifacts.require('DCorpMemberAccount')
+var MemberAccountShared = artifacts.require('DCorpMemberAccountShared')
+
+// Tools
+var BigNumber = require('bignumber.js')
+var Web3Factory = require('../modules/web3_factory')
+
+// Modules
+var web3 = Web3Factory.create({testrpc: true})
+var util = require('../modules/util')
+var dcorpUtil = require('../modules/dcorp_util.js')
+
+// Config
+var _config = require('../config')
+var config = _config.network.test
+
+contract('Accounts (Lock)', function (accounts) {
+  // Contracts
+  let dcorpAccountsInstance
+  let dispatcherInstance
+  let sharedAccountInstance
+
+  // Settings
+  let passphrase = '@@@ Some Random Passphrase @@@'
+  let passphraseEncoded
+  let passphraseHashed
+  let lockStake
+  let lockDuration
+  let node = accounts[accounts.length - 1]
+
+  before(async function () {
+    dcorpAccountsInstance = await DCorpAccounts.deployed()
+    sharedAccountInstance = MemberAccountShared.at(await dcorpAccountsInstance.shared.call())
+    passphraseEncoded = web3.eth.abi.encodeParameter('bytes32', web3.utils.fromAscii(passphrase))
+    passphraseHashed = web3.utils.sha3(passphraseEncoded)
+  })
+
+  beforeEach(async function () {
+    let transaction = await dcorpAccountsInstance.createAccount(passphraseHashed)
+    let log = await dcorpUtil.accounts.events.created.getLog(dcorpAccountsInstance, transaction)
+    dispatcherInstance = MemberAccount.at(log.args.account)
+    lockStake = new BigNumber(await sharedAccountInstance.lockStake.call())
+    lockDuration = new BigNumber(await sharedAccountInstance.lockDuration.call())
+    await sharedAccountInstance.addNode(node)
+  })
+
+  it('cannot obtain a lock when an account is already locked', async function () {
+    // Arrange
+    let account = accounts[accounts.length - 2]
+    let other = accounts[accounts.length - 3]
+    
+    await sharedAccountInstance.lock(dispatcherInstance.address, {
+      from: account, 
+      value: lockStake
+    })
+
+    let before = await sharedAccountInstance.isLocked.call(dispatcherInstance.address)
+    assert.isTrue(before, 'Account should be locked')
+
+    // Act
+    try {
+      await sharedAccountInstance.lock(dispatcherInstance.address, {
+        from: other, 
+        value: lockStake
+      })
+      assert.isFalse(true, 'Error should have been thrown')
+    } catch (error) {
+      util.errors.throws(error, 'Should not lock')
+    }
+  })
+
+  it('cannot obtain a lock when the stake is insufficient', async function () {
+    // Arrange
+    let account = accounts[accounts.length - 2]
+
+    let before = await sharedAccountInstance.isLocked.call(dispatcherInstance.address)
+    assert.isFalse(before, 'Account should not be locked')
+
+    // Act
+    try {
+      await sharedAccountInstance.lock(dispatcherInstance.address, {
+        from: account, 
+        value: lockStake.sub(1)
+      })
+      assert.isFalse(true, 'Error should have been thrown')
+    } catch (error) {
+      util.errors.throws(error, 'Should not lock')
+    }
+
+    let after = await sharedAccountInstance.isLocked.call(
+      dispatcherInstance.address)
+
+    // Assert
+    assert.isFalse(before, 'Account should not be locked')
+  })
+
+  it('can obtain a lock', async function () {
+    // Arrange
+    let account = accounts[accounts.length - 2]
+
+    let before = await sharedAccountInstance.isLocked.call(dispatcherInstance.address)
+    assert.isFalse(before, 'Account should not be locked')
+
+    // Act
+    await sharedAccountInstance.lock(dispatcherInstance.address, {
+      from: account, 
+      value: lockStake
+    })
+
+    let after = await sharedAccountInstance.isLocked.call(
+      dispatcherInstance.address)
+
+    // Assert
+    assert.isTrue(after, 'Account should be locked')
+  })
+
+  it('lock can expire', async function () {
+    // Arrange
+    let account = accounts[accounts.length - 2]
+
+    await sharedAccountInstance.lock(dispatcherInstance.address, {
+      from: account, 
+      value: lockStake
+    })
+
+    let before = await sharedAccountInstance.isLocked.call(dispatcherInstance.address)
+    assert.isTrue(before, 'Account should be locked')
+
+    // Act
+    await web3.evm.increaseTimePromise(lockDuration.add(1))
+    await web3.evm.minePromise() // Workaround
+
+    let after = await sharedAccountInstance.isLocked.call(
+      dispatcherInstance.address)
+
+    // Assert
+    assert.isFalse(after, 'Lock should be expired')
+  })
+
+  it('fails autentication when not locked', async function () {
+    // Arrange
+    let beneficiary = accounts[accounts.length - 2]
+    let amount = new BigNumber(web3.utils.toWei('1', 'ether'))
+
+    await dispatcherInstance.sendTransaction({
+      value: amount
+    })
+
+    let accountBalanceBefore = new BigNumber(
+      await web3.eth.getBalancePromise(dispatcherInstance.address))
+
+    // Act
+    try {
+      await dispatcherInstance.withdrawEther(
+        amount, 
+        passphraseEncoded, 
+        passphraseHashed,
+        {from: beneficiary})
+      assert.isFalse(true, 'Error should have been thrown')
+    } catch (error) {
+      util.errors.throws(error, 'Should not authenticate')
+    }
+    
+    let accountBalanceAfter = new BigNumber(
+      await web3.eth.getBalancePromise(dispatcherInstance.address))
+
+    // Assert
+    assert.isTrue(accountBalanceAfter.eq(accountBalanceBefore), 'Ether was send from account')
+  })
+
+  it('fails autentication when locked by someone else', async function () {
+    // Arrange
+    let beneficiary = accounts[accounts.length - 2]
+    let someone = accounts[accounts.length - 3]
+    let amount = new BigNumber(web3.utils.toWei('1', 'ether'))
+
+    await dispatcherInstance.sendTransaction({value: amount})
+    await sharedAccountInstance.lock(dispatcherInstance.address, {from: someone, value: lockStake})
+
+    let accountBalanceBefore = new BigNumber(
+      await web3.eth.getBalancePromise(dispatcherInstance.address))
+
+    // Act
+    try {
+      await dispatcherInstance.withdrawEther(
+        amount, 
+        passphraseEncoded, 
+        passphraseHashed,
+        {from: beneficiary})
+      assert.isFalse(true, 'Error should have been thrown')
+    } catch (error) {
+      util.errors.throws(error, 'Should not authenticate')
+    }
+    
+    let accountBalanceAfter = new BigNumber(
+      await web3.eth.getBalancePromise(dispatcherInstance.address))
+
+    // Assert
+    assert.isTrue(accountBalanceAfter.eq(accountBalanceBefore), 'Ether was send from account')
+  })
+
+  it('fails autentication when lock was expired', async function () {
+    // Arrange
+    let beneficiary = accounts[accounts.length - 2]
+    let amount = new BigNumber(web3.utils.toWei('1', 'ether'))
+
+    await dispatcherInstance.sendTransaction({value: amount})
+    await sharedAccountInstance.lock(dispatcherInstance.address, {from: beneficiary, value: lockStake})
+    await web3.evm.increaseTimePromise(lockDuration.add(1))
+    await web3.evm.minePromise() // Workaround
+
+    let accountBalanceBefore = new BigNumber(
+      await web3.eth.getBalancePromise(dispatcherInstance.address))
+
+    // Act
+    try {
+      await dispatcherInstance.withdrawEther(
+        amount, 
+        passphraseEncoded, 
+        passphraseHashed,
+        {from: beneficiary})
+      assert.isFalse(true, 'Error should have been thrown')
+    } catch (error) {
+      util.errors.throws(error, 'Should not authenticate')
+    }
+    
+    let accountBalanceAfter = new BigNumber(
+      await web3.eth.getBalancePromise(dispatcherInstance.address))
+
+    // Assert
+    assert.isTrue(accountBalanceAfter.eq(accountBalanceBefore), 'Ether was send from account')
+  })
+
+  it('authenticates when locked', async function () {
+    // Arrange
+    let beneficiary = accounts[accounts.length - 2]
+    let amount = new BigNumber(web3.utils.toWei('1', 'ether'))
+
+    await dispatcherInstance.sendTransaction({value: amount})
+    await sharedAccountInstance.lock(dispatcherInstance.address, {from: beneficiary, value: lockStake})
+
+    let accountBalanceBefore = new BigNumber(
+      await web3.eth.getBalancePromise(dispatcherInstance.address))
+
+    // Act
+    await dispatcherInstance.withdrawEther(
+      amount, 
+      passphraseEncoded, 
+      passphraseHashed, 
+      {from: beneficiary})
+    
+    let accountBalanceAfter = new BigNumber(
+      await web3.eth.getBalancePromise(dispatcherInstance.address))
+
+    // Assert
+    assert.isTrue(accountBalanceAfter.eq(accountBalanceBefore.sub(amount).sub(lockStake)), 'Ether was not send from account')
+  })
+
+  it('authenticates when not locked and called from a node', async function () {
+    // Arrange
+    let beneficiary = accounts[accounts.length - 2]
+    let amount = new BigNumber(web3.utils.toWei('1', 'ether'))
+
+    let locked = await sharedAccountInstance.isLocked.call(dispatcherInstance.address)
+    assert.isFalse(locked, 'Account should not be locked')
+
+    await dispatcherInstance.sendTransaction({value: amount})
+
+    let accountBalanceBefore = new BigNumber(await web3.eth.getBalancePromise(dispatcherInstance.address))
+    let beneficiaryBalanceBefore = new BigNumber(await web3.eth.getBalancePromise(beneficiary))
+
+    // Act
+    await dispatcherInstance.withdrawEtherTo(
+      beneficiary,
+      amount, 
+      passphraseEncoded, 
+      passphraseHashed, 
+      {from: node})
+    
+    let accountBalanceAfter = new BigNumber(await web3.eth.getBalancePromise(dispatcherInstance.address))
+    let beneficiaryBalanceAfter = new BigNumber(await web3.eth.getBalancePromise(beneficiary))
+    let fee = new BigNumber(await sharedAccountInstance.calculateWithdrawFee.call(amount, true))
+
+    // Assert
+    assert.isTrue(accountBalanceAfter.eq(accountBalanceBefore.sub(amount)), 'Ether was not send from account')
+    assert.isTrue(beneficiaryBalanceAfter.eq(beneficiaryBalanceBefore.add(amount).sub(fee)), 'Ether was not send to beneficiary')
+  })
+
+  it('authenticates when not locked and with 2fa enabled', async function () {
+    // Arrange
+    let beneficiary = accounts[accounts.length - 2]
+    let account = accounts[accounts.length - 1]
+    let amount = new BigNumber(web3.utils.toWei('1', 'ether'))
+
+    await sharedAccountInstance.lock(dispatcherInstance.address, {from: beneficiary, value: lockStake})
+    await dispatcherInstance.sendTransaction({value: amount})
+    await dispatcherInstance.enable2fa(passphraseEncoded, passphraseHashed, {from: account})
+
+    await web3.evm.increaseTimePromise(lockDuration.add(1))
+    await web3.evm.minePromise() // Workaround
+
+    let locked = await sharedAccountInstance.isLocked.call(dispatcherInstance.address)
+    assert.isFalse(locked, 'Account should not be locked')
+
+    let accountBalanceBefore = new BigNumber(await web3.eth.getBalancePromise(dispatcherInstance.address))
+    let beneficiaryBalanceBefore = new BigNumber(await web3.eth.getBalancePromise(beneficiary))
+
+    // Act
+    await dispatcherInstance.withdrawEtherTo(
+      beneficiary,
+      amount, 
+      passphraseEncoded, 
+      passphraseHashed, 
+      {from: account})
+    
+    let accountBalanceAfter = new BigNumber(await web3.eth.getBalancePromise(dispatcherInstance.address))
+    let beneficiaryBalanceAfter = new BigNumber(await web3.eth.getBalancePromise(beneficiary))
+
+    // Assert
+    assert.isTrue(accountBalanceAfter.eq(accountBalanceBefore.sub(amount)), 'Ether was not send from account')
+    assert.isTrue(beneficiaryBalanceAfter.eq(beneficiaryBalanceBefore.add(amount)), 'Ether was not send to beneficiary')
+  })
+})

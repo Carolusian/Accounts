@@ -39,6 +39,8 @@ contract('Accounts (Authentication)', function (accounts) {
   let passphrase = '@@@ Some Random Passphrase @@@'
   let passphraseEncoded
   let passphraseHashed
+  let lockStake
+  let node = accounts[accounts.length - 1]
 
   before(async function () {
     dcorpAccountsInstance = await DCorpAccounts.deployed()
@@ -51,6 +53,9 @@ contract('Accounts (Authentication)', function (accounts) {
     let transaction = await dcorpAccountsInstance.createAccount(passphraseHashed)
     let log = await dcorpUtil.accounts.events.created.getLog(dcorpAccountsInstance, transaction)
     dispatcherInstance = MemberAccount.at(log.args.account)
+
+    lockStake = new BigNumber(await sharedAccountInstance.lockStake.call())
+    await sharedAccountInstance.addNode(node)
   })
 
   it('fails autentication when provided a wrong password', async function () {
@@ -120,6 +125,10 @@ contract('Accounts (Authentication)', function (accounts) {
     let beneficiary = accounts[accounts.length - 2]
     let amount = new BigNumber(web3.utils.toWei('1', 'ether'))
 
+    await sharedAccountInstance.lock(
+      dispatcherInstance.address, 
+      {from: beneficiary, value: lockStake})
+
     await dispatcherInstance.sendTransaction({value: amount})
     await dispatcherInstance.enable2fa(passphraseEncoded, passphraseHashed, {from: beneficiary})
 
@@ -146,6 +155,10 @@ contract('Accounts (Authentication)', function (accounts) {
     let beneficiary = accounts[accounts.length - 1]
     let other = accounts[accounts.length - 2]
     let amount = new BigNumber(web3.utils.toWei('1', 'ether'))
+
+    await sharedAccountInstance.lock(
+      dispatcherInstance.address, 
+      {from: beneficiary, value: lockStake})
 
     await dispatcherInstance.sendTransaction({value: amount})
     await dispatcherInstance.enable2fa(passphraseEncoded, passphraseHashed, {from: beneficiary})
@@ -174,11 +187,14 @@ contract('Accounts (Authentication)', function (accounts) {
 
   it('disables 2fa', async function () {
     // Arrange
-    let node = accounts[accounts.length - 1]
     let beneficiary = accounts[accounts.length - 2]
     let amount = new BigNumber(web3.utils.toWei('1', 'ether'))
 
-    await dispatcherInstance.sendTransaction({value: amount})
+    await sharedAccountInstance.lock(
+      dispatcherInstance.address, 
+      {from: beneficiary, value: lockStake})
+
+    await dispatcherInstance.sendTransaction({value: amount})   
     await dispatcherInstance.enable2fa(passphraseEncoded, passphraseHashed, {from: beneficiary})
     await dispatcherInstance.disable2fa(passphraseEncoded, passphraseHashed, {from: beneficiary})
 

@@ -2,49 +2,97 @@ pragma solidity ^0.4.19;
 
 /**
  * IMemberAccount 
- *
- * FlyWeight
- *
+
  * #created 21/02/2018
  * #author Frank Bonnet
  */
 interface IMemberAccount {
 
     /**
-     * Returns true if `_value` wei can be withdrawn into `_to` 
+     * Replace the hashed passphrase
      *
-     * @param _to Receiving address
-     * @param _value Amount to withdraw in wei
+     * @param _passphrase Raw passphrasse 
+     * @param _passphraseHash Hash of the new passphrase 
      */
-    function isValidEtherWithdraw(address _to, uint _value) public view returns (bool);
+    function resetPassphrase(bytes32 _passphrase, bytes32 _passphraseHash) public;
 
 
     /**
-     * Returns true if `_value` of `_token` can be withdrawn into `_to` 
+     * Calls will only be accepted from `_authorizedAccount` only
+     *
+     * @param _passphrase Raw passphrasse 
+     * @param _passphraseHash Hash of the new passphrase 
+     */
+    function enable2fa(bytes32 _passphrase, bytes32 _passphraseHash) public;
+
+
+    /**
+     * Calls will only be accepted from anyone
+     *
+     * @param _passphrase Raw passphrasse 
+     * @param _passphraseHash Hash of the new passphrase 
+     */
+    function disable2fa(bytes32 _passphrase, bytes32 _passphraseHash) public;
+
+
+    /**
+     * Withdraws `_value` wei into sender
+     *
+     * @param _value Amount to widthdraw in wei
+     * @param _passphrase Raw passphrasse 
+     * @param _passphraseHash Hash of the new passphrase 
+     */
+    function withdrawEther(uint _value, bytes32 _passphrase, bytes32 _passphraseHash) public;
+
+
+    /**
+     * Withdraws `_value` wei into `_to` 
+     *
+     * @param _to Receiving address
+     * @param _value Amount to widthdraw in wei
+     * @param _passphrase Raw passphrasse 
+     * @param _passphraseHash Hash of the new passphrase 
+     */
+    function withdrawEtherTo(address _to, uint _value, bytes32 _passphrase, bytes32 _passphraseHash) public;
+
+
+    /**
+     * Withdraws `_value` of `_token` into sender
+     *
+     * @param _token ERC20 token to withdraw from
+     * @param _value Amount to withdraw in tokens
+     * @param _passphrase Raw passphrasse 
+     * @param _passphraseHash Hash of the new passphrase 
+     */
+    function withdrawTokens(address _token, uint _value, bytes32 _passphrase, bytes32 _passphraseHash) public;
+
+
+    /**
+     * Withdraws `_value` of `_token` into `_to` 
      *
      * @param _token ERC20 token to withdraw from
      * @param _to Receiving address
      * @param _value Amount to withdraw in tokens
+     * @param _passphrase Raw passphrasse 
+     * @param _passphraseHash Hash of the new passphrase 
      */
-    function isValidTokenWithdraw(address _token, address _to, uint _value) public view returns (bool);
+    function withdrawTokensTo(address _token, address _to, uint _value, bytes32 _passphrase, bytes32 _passphraseHash) public;
 
 
     /**
-     * Computes the withdraw fee
+     * Forward a call to `_target` passing 
      *
-     * @param _value Amount that was withdrawn
-     * @param _included Whether the fee is included in _value
-     * @return Fee
+     * @param _target Destination address
+     * @param _value Amount of Ether to send
+     * @param _data Calldata
+     * @param _passphrase Raw passphrasse 
+     * @param _passphraseHash Hash of the new passphrase 
      */
-    function calculateWithdrawFee(uint _value, bool _included) public view returns (uint);
+    function execute(address _target, uint _value, bytes _data, bytes32 _passphrase, bytes32 _passphraseHash) public payable;
 
 
     /**
-     * Returns true if it's allowed to make proxy calls 
-     * to `_target` 
-     *
-     * @param _target Target address to evaluate
-     * @return Wether the target is valid
+     * Accept payments
      */
-    function isValidTarget(address _target) public view returns (bool);
+    function () public payable;
 }
