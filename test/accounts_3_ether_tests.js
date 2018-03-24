@@ -47,6 +47,9 @@ contract('Accounts (Ether)', function (accounts) {
     sharedAccountInstance = MemberAccountShared.at(await dcorpAccountsInstance.shared.call())
     passphraseEncoded = web3.eth.abi.encodeParameter('bytes32', web3.utils.fromAscii(passphrase))
     passphraseHashed = web3.utils.sha3(passphraseEncoded)
+
+    await sharedAccountInstance.addNode(
+      node, true, 100, 100, 100)
   })
 
   beforeEach(async function () {
@@ -57,7 +60,6 @@ contract('Accounts (Ether)', function (accounts) {
       await sharedAccountInstance.minEtherWithdrawAmount.call())
 
     lockStake = new BigNumber(await sharedAccountInstance.lockStake.call())
-    await sharedAccountInstance.addNode(node)
   })
 
   it('accepts incomming ether', async function () {
@@ -96,10 +98,11 @@ contract('Accounts (Ether)', function (accounts) {
       beneficiary, 
       amount, 
       passphraseEncoded, 
-      passphraseHashed)
+      passphraseHashed, 
+      {from: node})
 
     let beneficiaryBalanceAfter = new BigNumber(await web3.eth.getBalancePromise(beneficiary))
-    let fee = new BigNumber(await sharedAccountInstance.calculateWithdrawFee.call(amount, true))
+    let fee = new BigNumber(await sharedAccountInstance.calculateWithdrawFee.call(node, amount, true))
 
     // Assert
     assert.isTrue(beneficiaryBalanceAfter.eq(beneficiaryBalanceBefore.add(amount).sub(fee)), 
@@ -157,7 +160,103 @@ contract('Accounts (Ether)', function (accounts) {
     let transactionCosts = new BigNumber(await util.transaction.getTransactionCost(transaction2))
     let nodeBalanceAfter = new BigNumber(await web3.eth.getBalancePromise(node))
     let beneficiaryBalanceAfter = new BigNumber(await web3.eth.getBalancePromise(beneficiary))
-    let fee = new BigNumber(await sharedAccountInstance.calculateWithdrawFee.call(amount, true))
+    let fee = new BigNumber(await sharedAccountInstance.calculateWithdrawFee.call(node, amount, true))
+
+    // Assert
+    assert.isTrue(nodeBalanceAfter.eq(nodeBalanceBefore.add(fee).sub(transactionCosts)), 'Ether fee did not arrive at the node')
+    assert.isTrue(beneficiaryBalanceAfter.eq(beneficiaryBalanceBefore.add(amount).sub(fee)), 'Ether did not arrive at the beneficiary')
+  })
+
+  it('Pays increased withdraw fee to node when 2fa is disabled', async function () {
+    // Arrange
+    let owner = accounts[0]
+    let beneficiary = accounts[accounts.length - 2]
+    let amount = BigNumber.max(minEtherWithdrawAmount, web3.utils.toWei('1', 'ether'))
+    let increasedFeePercentage = 120
+    let denominator = 100
+
+    await dispatcherInstance.sendTransaction({
+      value: amount
+    })
+
+    let nodeBalanceBefore = new BigNumber(await web3.eth.getBalancePromise(node))
+    let beneficiaryBalanceBefore = new BigNumber(await web3.eth.getBalancePromise(beneficiary))
+
+    await sharedAccountInstance.updateNode(
+      node, true, 1, 1, 1, {from: owner})
+
+    let originalFee = new BigNumber(
+      await sharedAccountInstance.calculateWithdrawFee.call(node, amount, false))
+
+    await sharedAccountInstance.updateNode(
+      node, true, denominator, increasedFeePercentage, denominator, {from: owner})
+
+    let increasedFee = new BigNumber(
+      await sharedAccountInstance.calculateWithdrawFee.call(node, amount, false))
+
+    assert.isTrue(increasedFee.eq(originalFee.mul(increasedFeePercentage.toString()).div(denominator.toString())), 
+      'Fee is not increased correctly')
+
+    // Act
+    let transaction2 = await dispatcherInstance.withdrawEtherTo(
+      beneficiary, 
+      amount, 
+      passphraseEncoded, 
+      passphraseHashed,
+      {from: node})
+
+    let transactionCosts = new BigNumber(await util.transaction.getTransactionCost(transaction2))
+    let nodeBalanceAfter = new BigNumber(await web3.eth.getBalancePromise(node))
+    let beneficiaryBalanceAfter = new BigNumber(await web3.eth.getBalancePromise(beneficiary))
+    let fee = new BigNumber(await sharedAccountInstance.calculateWithdrawFee.call(node, amount, true))
+
+    // Assert
+    assert.isTrue(nodeBalanceAfter.eq(nodeBalanceBefore.add(fee).sub(transactionCosts)), 'Ether fee did not arrive at the node')
+    assert.isTrue(beneficiaryBalanceAfter.eq(beneficiaryBalanceBefore.add(amount).sub(fee)), 'Ether did not arrive at the beneficiary')
+  })
+
+  it('Pays discounted withdraw fee to node when 2fa is disabled', async function () {
+    // Arrange
+    let owner = accounts[0]
+    let beneficiary = accounts[accounts.length - 2]
+    let amount = BigNumber.max(minEtherWithdrawAmount, web3.utils.toWei('1', 'ether'))
+    let increasedFeePercentage = 25
+    let denominator = 100
+
+    await dispatcherInstance.sendTransaction({
+      value: amount
+    })
+
+    let nodeBalanceBefore = new BigNumber(await web3.eth.getBalancePromise(node))
+    let beneficiaryBalanceBefore = new BigNumber(await web3.eth.getBalancePromise(beneficiary))
+
+    await sharedAccountInstance.updateNode(
+      node, true, 1, 1, 1, {from: owner})
+
+    let originalFee = new BigNumber(
+      await sharedAccountInstance.calculateWithdrawFee.call(node, amount, false))
+
+    await sharedAccountInstance.updateNode(
+      node, true, denominator, increasedFeePercentage, denominator, {from: owner})
+
+    let increasedFee = new BigNumber(
+      await sharedAccountInstance.calculateWithdrawFee.call(node, amount, false))
+
+    assert.isTrue(increasedFee.eq(originalFee.mul(increasedFeePercentage.toString()).div(denominator.toString())), 
+      'Fee is not increased correctly')
+
+    // Act
+    let transaction2 = await dispatcherInstance.withdrawEtherTo(
+      beneficiary, 
+      amount, 
+      passphraseEncoded, 
+      passphraseHashed,
+      {from: node})
+
+    let transactionCosts = new BigNumber(await util.transaction.getTransactionCost(transaction2))
+    let nodeBalanceAfter = new BigNumber(await web3.eth.getBalancePromise(node))
+    let beneficiaryBalanceAfter = new BigNumber(await web3.eth.getBalancePromise(beneficiary))
+    let fee = new BigNumber(await sharedAccountInstance.calculateWithdrawFee.call(node, amount, true))
 
     // Assert
     assert.isTrue(nodeBalanceAfter.eq(nodeBalanceBefore.add(fee).sub(transactionCosts)), 'Ether fee did not arrive at the node')

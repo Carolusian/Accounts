@@ -57,7 +57,7 @@ contract('Accounts (Lock)', function (accounts) {
     dispatcherInstance = MemberAccount.at(log.args.account)
     lockStake = new BigNumber(await sharedAccountInstance.lockStake.call())
     lockDuration = new BigNumber(await sharedAccountInstance.lockDuration.call())
-    await sharedAccountInstance.addNode(node)
+    await sharedAccountInstance.addNode(node, true, 1, 1, 1)
   })
 
   it('cannot obtain a lock when an account is already locked', async function () {
@@ -380,7 +380,7 @@ contract('Accounts (Lock)', function (accounts) {
     
     let accountBalanceAfter = new BigNumber(await web3.eth.getBalancePromise(dispatcherInstance.address))
     let beneficiaryBalanceAfter = new BigNumber(await web3.eth.getBalancePromise(beneficiary))
-    let fee = new BigNumber(await sharedAccountInstance.calculateWithdrawFee.call(amount, true))
+    let fee = new BigNumber(await sharedAccountInstance.calculateWithdrawFee.call(node, amount, true))
 
     // Assert
     assert.isTrue(accountBalanceAfter.eq(accountBalanceBefore.sub(amount)), 'Ether was not send from account')

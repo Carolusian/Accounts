@@ -150,7 +150,7 @@ contract MemberAccount is Dispatchable, IAccount, IEtherAccount, ITokenAccount, 
 
         // Calculate fee
         if (authorizedAccount == 0x0) {
-            fee = shared.calculateWithdrawFee(_value, true);
+            fee = shared.calculateWithdrawFee(msg.sender, _value, true);
             amount -= fee;
         }
 
@@ -192,7 +192,7 @@ contract MemberAccount is Dispatchable, IAccount, IEtherAccount, ITokenAccount, 
 
         // Calculate fee
         if (authorizedAccount == 0x0) {
-            fee = shared.calculateWithdrawFee(amount, true);
+            fee = shared.calculateWithdrawFee(msg.sender, amount, true);
             amount -= fee;
         }
 

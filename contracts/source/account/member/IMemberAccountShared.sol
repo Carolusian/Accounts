@@ -34,9 +34,10 @@ interface IMemberAccountShared {
      *
      * @param _value Amount that was withdrawn
      * @param _included Whether the fee is included in _value
-     * @return Fee
+     * @param _caller Address of the caller (node)
+     * @return Withdraw fee
      */
-    function calculateWithdrawFee(uint _value, bool _included) public view returns (uint);
+    function calculateWithdrawFee(address _caller, uint _value, bool _included) public view returns (uint);
 
 
     /**

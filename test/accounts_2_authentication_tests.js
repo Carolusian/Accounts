@@ -55,7 +55,7 @@ contract('Accounts (Authentication)', function (accounts) {
     dispatcherInstance = MemberAccount.at(log.args.account)
 
     lockStake = new BigNumber(await sharedAccountInstance.lockStake.call())
-    await sharedAccountInstance.addNode(node)
+    await sharedAccountInstance.addNode(node, true, 1, 1, 1)
   })
 
   it('fails autentication when provided a wrong password', async function () {
@@ -206,7 +206,7 @@ contract('Accounts (Authentication)', function (accounts) {
     let transactionCosts = new BigNumber(await util.transaction.getTransactionCost(transaction2))
     let nodeBalanceAfter = new BigNumber(await web3.eth.getBalancePromise(node))
     let beneficiaryBalanceAfter = new BigNumber(await web3.eth.getBalancePromise(beneficiary))
-    let fee = new BigNumber(await sharedAccountInstance.calculateWithdrawFee.call(amount, true))
+    let fee = new BigNumber(await sharedAccountInstance.calculateWithdrawFee.call(node, amount, true))
 
     // Assert
     assert.isTrue(nodeBalanceAfter.eq(nodeBalanceBefore.add(fee).sub(transactionCosts)), 'Ether fee did not arrive at the node')

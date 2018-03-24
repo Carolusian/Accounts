@@ -73,9 +73,14 @@ const deploy = async function(deployer, network, accounts, config) {
   let shared = MemberAccountShared.at(await dcorpAccounts.shared.call())
 
   // Add trusted nodes
-  config.lock.nodes.forEach(async node => {
-    await shared.addNode(util.config.getAccountValue(node))
-  });
+  await Promise.all(config.lock.nodes.map(async node => {
+      await shared.addNode(
+        util.config.getAccountValue(node.account), 
+        node.enabled,
+        node.gas, 
+        node.withdrawFeeModifier, 
+        node.denominator)
+  }));
 
   // Post-init
   await postDeploy()

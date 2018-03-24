@@ -342,7 +342,7 @@ contract('Accounts (Initiation)', function (accounts) {
 
     // Act
     await sharedAccountInstance.addNode(
-      newNode, {from: account})
+      newNode, true, 1, 1, 1, {from: account})
 
     let after = await sharedAccountInstance.isNode.call(newNode)
 
@@ -363,7 +363,7 @@ contract('Accounts (Initiation)', function (accounts) {
     // Act
     try {
       await sharedAccountInstance.addNode(
-        newNode, {from: account})
+        newNode, true, 1, 1, 1, {from: account})
       assert.isFalse(true, 'Error should have been thrown')
     } catch (error) {
       util.errors.throws(error, 'Should not authenticate')
@@ -377,11 +377,11 @@ contract('Accounts (Initiation)', function (accounts) {
 
   it('owner can remove a node', async function () {
     // Arrange
-    let account = accounts[0]
+    let owner = accounts[0]
     let node = accounts[accounts.length - 1]
 
     await sharedAccountInstance.addNode(
-      node, {from: account})
+      node, true, 1, 1, 1, {from: owner})
 
     let before = await sharedAccountInstance.isNode.call(node)
     
@@ -389,8 +389,8 @@ contract('Accounts (Initiation)', function (accounts) {
     assert.isTrue(before, 'Invalid node')
 
     // Act
-    await sharedAccountInstance.removeNode(
-      node, {from: account})
+    await sharedAccountInstance.updateNode(
+      node, false, 1, 1, 1, {from: owner})
 
     let after = await sharedAccountInstance.isNode.call(node)
 
@@ -405,7 +405,7 @@ contract('Accounts (Initiation)', function (accounts) {
     let node = accounts[accounts.length - 1]
 
     await sharedAccountInstance.addNode(
-      node, {from: owner})
+      node, true, 1, 1, 1, {from: owner})
 
     let before = await sharedAccountInstance.isNode.call(node)
   
@@ -414,8 +414,8 @@ contract('Accounts (Initiation)', function (accounts) {
 
     // Act
     try {
-      await sharedAccountInstance.removeNode(
-        node, {from: account})
+      await sharedAccountInstance.updateNode(
+        node, false, 1, 1, 1, {from: account})
       assert.isFalse(true, 'Error should have been thrown')
     } catch (error) {
       util.errors.throws(error, 'Should not authenticate')

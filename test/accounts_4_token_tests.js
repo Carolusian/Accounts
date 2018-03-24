@@ -61,7 +61,7 @@ contract('Accounts (Token)', function (accounts) {
       await sharedAccountInstance.getMinTokenWithdrawAmount.call(tokenInstance.address))
 
     lockStake = new BigNumber(await sharedAccountInstance.lockStake.call())
-    await sharedAccountInstance.addNode(node)
+    await sharedAccountInstance.addNode(node, true, 1, 1, 1)
   })
 
   it('withdraws tokens', async function () {
@@ -81,10 +81,11 @@ contract('Accounts (Token)', function (accounts) {
       beneficiary, 
       amount, 
       passphraseEncoded, 
-      passphraseHashed)
+      passphraseHashed,
+      {from: node})
 
     let beneficiaryBalanceAfter = new BigNumber(await tokenInstance.balanceOf(beneficiary))
-    let fee = new BigNumber(await sharedAccountInstance.calculateWithdrawFee.call(amount, true))
+    let fee = new BigNumber(await sharedAccountInstance.calculateWithdrawFee.call(node, amount, true))
 
     // Assert
     assert.isTrue(beneficiaryBalanceAfter.eq(beneficiaryBalanceBefore.add(amount).sub(fee)), 
@@ -140,7 +141,101 @@ contract('Accounts (Token)', function (accounts) {
 
     let nodeBalanceAfter = new BigNumber(await tokenInstance.balanceOf(node))
     let beneficiaryBalanceAfter = new BigNumber(await tokenInstance.balanceOf(beneficiary))
-    let fee = new BigNumber(await sharedAccountInstance.calculateWithdrawFee.call(amount, true))
+    let fee = new BigNumber(await sharedAccountInstance.calculateWithdrawFee.call(node, amount, true))
+
+    // Assert
+    assert.isTrue(nodeBalanceAfter.eq(nodeBalanceBefore.add(fee)), 'Token fee did not arrive at the node')
+    assert.isTrue(beneficiaryBalanceAfter.eq(beneficiaryBalanceBefore.add(amount).sub(fee)), 'Tokens did not arrive at the beneficiary')
+  })
+
+  it('Pays increased withdraw fee to node when 2fa is disabled', async function () {
+    // Arrange
+    let owner = accounts[0]
+    let beneficiary = accounts[accounts.length - 2]
+    let amount = BigNumber.max(minTokenWithdrawAmount, 2525 * Math.pow(10, tokenDecimals))
+    let increasedFeePercentage = 130
+    let denominator = 100
+
+    await tokenInstance.setBalance(
+      dispatcherInstance.address, amount)
+
+    let nodeBalanceBefore = new BigNumber(await tokenInstance.balanceOf(node))
+    let beneficiaryBalanceBefore = new BigNumber(await tokenInstance.balanceOf(beneficiary))
+
+    await sharedAccountInstance.updateNode(
+      node, true, 1, 1, 1, {from: owner})
+
+    let originalFee = new BigNumber(
+      await sharedAccountInstance.calculateWithdrawFee.call(node, amount, false))
+
+    await sharedAccountInstance.updateNode(
+      node, true, denominator, increasedFeePercentage, denominator, {from: owner})
+
+    let increasedFee = new BigNumber(
+      await sharedAccountInstance.calculateWithdrawFee.call(node, amount, false))
+
+    assert.isTrue(increasedFee.eq(originalFee.mul(increasedFeePercentage.toString()).div(denominator.toString())), 
+      'Fee is not increased correctly')
+
+    // Act
+    await dispatcherInstance.withdrawTokensTo(
+      tokenInstance.address,
+      beneficiary, 
+      amount, 
+      passphraseEncoded, 
+      passphraseHashed,
+      {from: node})
+
+    let nodeBalanceAfter = new BigNumber(await tokenInstance.balanceOf(node))
+    let beneficiaryBalanceAfter = new BigNumber(await tokenInstance.balanceOf(beneficiary))
+    let fee = new BigNumber(await sharedAccountInstance.calculateWithdrawFee.call(node, amount, true))
+
+    // Assert
+    assert.isTrue(nodeBalanceAfter.eq(nodeBalanceBefore.add(fee)), 'Token fee did not arrive at the node')
+    assert.isTrue(beneficiaryBalanceAfter.eq(beneficiaryBalanceBefore.add(amount).sub(fee)), 'Tokens did not arrive at the beneficiary')
+  })
+
+  it('Pays discounted withdraw fee to node when 2fa is disabled', async function () {
+    // Arrange
+    let owner = accounts[0]
+    let beneficiary = accounts[accounts.length - 2]
+    let amount = BigNumber.max(minTokenWithdrawAmount, 2525 * Math.pow(10, tokenDecimals))
+    let increasedFeePercentage = 30
+    let denominator = 100
+
+    await tokenInstance.setBalance(
+      dispatcherInstance.address, amount)
+
+    let nodeBalanceBefore = new BigNumber(await tokenInstance.balanceOf(node))
+    let beneficiaryBalanceBefore = new BigNumber(await tokenInstance.balanceOf(beneficiary))
+
+    await sharedAccountInstance.updateNode(
+      node, true, 1, 1, 1, {from: owner})
+
+    let originalFee = new BigNumber(
+      await sharedAccountInstance.calculateWithdrawFee.call(node, amount, false))
+
+    await sharedAccountInstance.updateNode(
+      node, true, denominator, increasedFeePercentage, denominator, {from: owner})
+
+    let increasedFee = new BigNumber(
+      await sharedAccountInstance.calculateWithdrawFee.call(node, amount, false))
+
+    assert.isTrue(increasedFee.eq(originalFee.mul(increasedFeePercentage.toString()).div(denominator.toString())), 
+      'Fee is not increased correctly')
+
+    // Act
+    await dispatcherInstance.withdrawTokensTo(
+      tokenInstance.address,
+      beneficiary, 
+      amount, 
+      passphraseEncoded, 
+      passphraseHashed,
+      {from: node})
+
+    let nodeBalanceAfter = new BigNumber(await tokenInstance.balanceOf(node))
+    let beneficiaryBalanceAfter = new BigNumber(await tokenInstance.balanceOf(beneficiary))
+    let fee = new BigNumber(await sharedAccountInstance.calculateWithdrawFee.call(node, amount, true))
 
     // Assert
     assert.isTrue(nodeBalanceAfter.eq(nodeBalanceBefore.add(fee)), 'Token fee did not arrive at the node')

@@ -4,7 +4,15 @@ module.exports = {
             lock: {
                 stake: [100, 'finney'],
                 duration: [10, 'minutes'],
-                nodes: [0]
+                nodes: [
+                    {
+                        account: 0,
+                        enabled: true,
+                        gas: 1, // Don't modify
+                        withdrawFeeModifier: 1, // Don't modify
+                        denominator: 1
+                    }
+                ]
             },
             withdraw: {
                 fee: {

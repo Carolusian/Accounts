@@ -21,6 +21,14 @@ contract MemberAccountShared is TransferableOwnership, IMemberAccountShared {
         uint stake;
     }
 
+    struct Node {
+        bool enabled;
+        uint gas;
+        uint withdrawFeeModifier;
+        uint denominator;
+        uint index;
+    }
+
     // Fees
     uint public denominator;
     uint public withdrawFeePercentage;
@@ -37,7 +45,13 @@ contract MemberAccountShared is TransferableOwnership, IMemberAccountShared {
     uint public lockStake;
     uint public lockDuration;
     mapping(address => Lock) private locks;
-    mapping(address => bool) private nodes;
+
+    mapping(address => Node) private nodes;
+    address[] private nodesIndex;
+
+    // Events
+    event NodeAdded(address node, bool enabled, uint gas, uint withdrawFeeModifier, uint denominator);
+    event NodeUpdated(address node, bool enabled, uint gas, uint withdrawFeeModifier, uint denominator);
     
 
     /**
@@ -148,19 +162,32 @@ contract MemberAccountShared is TransferableOwnership, IMemberAccountShared {
 
 
     /**
-     * Computes the withdraw fee
+     * Calculates the withdraw fee
      *
      * @param _value Amount that was withdrawn
      * @param _included Whether the fee is included in _value
-     * @return Fee
+     * @param _caller Address of the caller (node)
+     * @return Withdraw fee
      */
-    function calculateWithdrawFee(uint _value, bool _included) public view returns (uint) {
+    function calculateWithdrawFee(address _caller, uint _value, bool _included) public view returns (uint) {
         if (withdrawFeePercentage == 0) {
             return 0;
         }
 
-        uint amount = _included ? _value * denominator / (denominator + withdrawFeePercentage) : _value;
-        return amount * withdrawFeePercentage / denominator;
+        // Node can modify fee
+        uint actualWithdrawFeePercentage;
+        if (nodes[_caller].enabled) {
+            if (nodes[_caller].withdrawFeeModifier == 0) {
+                return 0;
+            }
+
+            actualWithdrawFeePercentage = withdrawFeePercentage * nodes[_caller].withdrawFeeModifier / nodes[_caller].denominator;
+        } else {
+            actualWithdrawFeePercentage = withdrawFeePercentage;
+        }
+
+        uint amount = _included ? _value * denominator / (denominator + actualWithdrawFeePercentage) : _value;
+        return amount * actualWithdrawFeePercentage / denominator;
     }
 
 
@@ -250,7 +277,7 @@ contract MemberAccountShared is TransferableOwnership, IMemberAccountShared {
      * @param _account Account that will be unlocked
      */
     function removeLock(address _account) public {
-        //require(_account == msg.sender);
+        require(_account == msg.sender);
 
         // Remove lock
         locks[_account].until = 0;
@@ -262,20 +289,42 @@ contract MemberAccountShared is TransferableOwnership, IMemberAccountShared {
      * are trusted and thus not required to obtain a lock before 
      * authenticating. This saves gas.
      *
-     * @param _node The address to be added as a valid node
+     * @param _node Address to be removed as a valid node
+     * @param _enabled Whether the node is enabled or not
+     * @param _gas Amount of gas it charges the caller (100 eq msg.gas)
+     * @param _withdrawFeeModifier Modifier applied to fees charged when withdrawing (100 eq the standard for the token that is withdrawn)
+     * @param _denominator Precesion used to calculate fees
      */
-    function addNode(address _node) public only_owner {
-        nodes[_node] = true;
+    function addNode(address _node, bool _enabled, uint _gas, uint _withdrawFeeModifier, uint _denominator) public only_owner {
+        nodes[_node] = Node(
+            _enabled, _gas, _withdrawFeeModifier, _denominator, nodesIndex.push(_node) - 1);
+
+        // Notify
+        NodeAdded(_node, _enabled, _gas, _withdrawFeeModifier, _denominator);
     }
 
 
     /**
-     * Removes `_node` from the nodes list
+     * Updates a `_node` from the nodes list
      *
-     * @param _node The address to be removed as a valid node
+     * @param _node Address to be removed as a valid node
+     * @param _enabled Whether the node is enabled or not
+     * @param _gas Amount of gas it charges the caller (100 eq msg.gas)
+     * @param _withdrawFeeModifier Modifier applied to fees charged when withdrawing (100 eq the standard for the token that is withdrawn)
+     * @param _denominator Precesion used to calculate fees
      */
-    function removeNode(address _node) public only_owner {
-        nodes[_node] = false;
+    function updateNode(address _node, bool _enabled, uint _gas, uint _withdrawFeeModifier, uint _denominator) public only_owner {
+        require(nodes[_node].index < nodesIndex.length && _node == nodesIndex[nodes[_node].index]);
+
+        // Update node
+        Node storage node = nodes[_node];
+        node.enabled = _enabled;
+        node.gas = _gas;
+        node.withdrawFeeModifier = _withdrawFeeModifier;
+        node.denominator = _denominator;
+
+        // Notify
+        NodeUpdated(_node, _enabled, _gas, _withdrawFeeModifier, _denominator);
     }
 
 
@@ -286,6 +335,6 @@ contract MemberAccountShared is TransferableOwnership, IMemberAccountShared {
      * @return Wether _node is a valid node
      */
     function isNode(address _node) public view returns (bool) {
-        return nodes[_node];
+        return nodes[_node].enabled;
     }
 }
