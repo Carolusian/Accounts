@@ -90,6 +90,15 @@ interface IMemberAccountShared {
 
 
     /**
+     * Remove a lock from `_account`. Locking the account restricts authentication 
+     * to the msg.sender and can be overwritten by a valid node or enabled 2fa option
+     *
+     * @param _account Account that will be unlocked
+     */
+    function removeLock(address _account) public;
+
+
+    /**
      * Returns true if `_node` is a valid node
      *
      * @param _node The address to be checked

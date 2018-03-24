@@ -234,12 +234,27 @@ contract MemberAccountShared is TransferableOwnership, IMemberAccountShared {
         require(stake >= lockStake); // Sufficient stake
         require(locks[_account].until < now); // Not currently locked
 
+        // Obtain lock
         locks[_account] = Lock(
             _owner, now + lockDuration, stake);
 
         // Return stake to account
         _account.transfer(stake);
     }
+
+
+    /**
+     * Remove a lock from `_account`. Locking the account restricts authentication 
+     * to the msg.sender and can be overwritten by a valid node or enabled 2fa option
+     *
+     * @param _account Account that will be unlocked
+     */
+    function removeLock(address _account) public {
+        //require(_account == msg.sender);
+
+        // Remove lock
+        locks[_account].until = 0;
+    } 
 
 
     /**

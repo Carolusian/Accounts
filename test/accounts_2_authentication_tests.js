@@ -40,7 +40,7 @@ contract('Accounts (Authentication)', function (accounts) {
   let passphraseEncoded
   let passphraseHashed
   let lockStake
-  let node = accounts[accounts.length - 1]
+  let node = accounts[1]
 
   before(async function () {
     dcorpAccountsInstance = await DCorpAccounts.deployed()
@@ -156,11 +156,8 @@ contract('Accounts (Authentication)', function (accounts) {
     let other = accounts[accounts.length - 2]
     let amount = new BigNumber(web3.utils.toWei('1', 'ether'))
 
-    await sharedAccountInstance.lock(
-      dispatcherInstance.address, 
-      {from: beneficiary, value: lockStake})
-
     await dispatcherInstance.sendTransaction({value: amount})
+    await sharedAccountInstance.lock(dispatcherInstance.address, {from: beneficiary, value: lockStake})
     await dispatcherInstance.enable2fa(passphraseEncoded, passphraseHashed, {from: beneficiary})
 
     let accountBalanceBefore = new BigNumber(
@@ -190,11 +187,8 @@ contract('Accounts (Authentication)', function (accounts) {
     let beneficiary = accounts[accounts.length - 2]
     let amount = new BigNumber(web3.utils.toWei('1', 'ether'))
 
-    await sharedAccountInstance.lock(
-      dispatcherInstance.address, 
-      {from: beneficiary, value: lockStake})
-
     await dispatcherInstance.sendTransaction({value: amount})   
+    await sharedAccountInstance.lock(dispatcherInstance.address, {from: beneficiary, value: lockStake})
     await dispatcherInstance.enable2fa(passphraseEncoded, passphraseHashed, {from: beneficiary})
     await dispatcherInstance.disable2fa(passphraseEncoded, passphraseHashed, {from: beneficiary})
 

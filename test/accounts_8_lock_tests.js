@@ -42,7 +42,7 @@ contract('Accounts (Lock)', function (accounts) {
   let passphraseHashed
   let lockStake
   let lockDuration
-  let node = accounts[accounts.length - 1]
+  let node = accounts[1]
 
   before(async function () {
     dcorpAccountsInstance = await DCorpAccounts.deployed()
@@ -143,7 +143,7 @@ contract('Accounts (Lock)', function (accounts) {
     assert.isTrue(before, 'Account should be locked')
 
     // Act
-    await web3.evm.increaseTimePromise(lockDuration.add(1))
+    await web3.evm.increaseTimePromise(lockDuration.add('1'))
     await web3.evm.minePromise() // Workaround
 
     let after = await sharedAccountInstance.isLocked.call(
@@ -215,6 +215,69 @@ contract('Accounts (Lock)', function (accounts) {
     assert.isTrue(accountBalanceAfter.eq(accountBalanceBefore), 'Ether was send from account')
   })
 
+  it('node fails autentication when locked', async function () {
+    // Arrange
+    let someone = accounts[accounts.length - 2]
+    let amount = new BigNumber(web3.utils.toWei('1', 'ether'))
+
+    await dispatcherInstance.sendTransaction({value: amount})
+    await sharedAccountInstance.lock(dispatcherInstance.address, {from: someone, value: lockStake})
+
+    let accountBalanceBefore = new BigNumber(
+      await web3.eth.getBalancePromise(dispatcherInstance.address))
+
+    // Act
+    try {
+      await dispatcherInstance.withdrawEtherTo(
+        someone,
+        amount, 
+        passphraseEncoded, 
+        passphraseHashed,
+        {from: node})
+      assert.isFalse(true, 'Error should have been thrown')
+    } catch (error) {
+      util.errors.throws(error, 'Should not authenticate')
+    }
+    
+    let accountBalanceAfter = new BigNumber(
+      await web3.eth.getBalancePromise(dispatcherInstance.address))
+
+    // Assert
+    assert.isTrue(accountBalanceAfter.eq(accountBalanceBefore), 'Ether was send from account')
+  })
+
+  it('2fa fails autentication when locked', async function () {
+    // Arrange
+    let someone = accounts[accounts.length - 2]
+    let amount = new BigNumber(web3.utils.toWei('1', 'ether'))
+
+    await dispatcherInstance.sendTransaction({value: amount})
+    await sharedAccountInstance.lock(dispatcherInstance.address, {from: someone, value: lockStake})
+    await dispatcherInstance.enable2fa(passphraseEncoded, passphraseHashed, {from: someone})
+    await sharedAccountInstance.lock(dispatcherInstance.address, {from: someone, value: lockStake})
+
+    let accountBalanceBefore = new BigNumber(
+      await web3.eth.getBalancePromise(dispatcherInstance.address))
+
+    // Act
+    try {
+      await dispatcherInstance.withdrawEther(
+        amount, 
+        passphraseEncoded, 
+        passphraseHashed,
+        {from: someone})
+      assert.isFalse(true, 'Error should have been thrown')
+    } catch (error) {
+      util.errors.throws(error, 'Should not authenticate')
+    }
+    
+    let accountBalanceAfter = new BigNumber(
+      await web3.eth.getBalancePromise(dispatcherInstance.address))
+
+    // Assert
+    assert.isTrue(accountBalanceAfter.eq(accountBalanceBefore), 'Ether was send from account')
+  })
+
   it('fails autentication when lock was expired', async function () {
     // Arrange
     let beneficiary = accounts[accounts.length - 2]
@@ -222,7 +285,7 @@ contract('Accounts (Lock)', function (accounts) {
 
     await dispatcherInstance.sendTransaction({value: amount})
     await sharedAccountInstance.lock(dispatcherInstance.address, {from: beneficiary, value: lockStake})
-    await web3.evm.increaseTimePromise(lockDuration.add(1))
+    await web3.evm.increaseTimePromise(lockDuration.add('1'))
     await web3.evm.minePromise() // Workaround
 
     let accountBalanceBefore = new BigNumber(
@@ -272,6 +335,28 @@ contract('Accounts (Lock)', function (accounts) {
     assert.isTrue(accountBalanceAfter.eq(accountBalanceBefore.sub(amount).sub(lockStake)), 'Ether was not send from account')
   })
 
+  it('removes lock after authenticating', async function () {
+    // Arrange
+    let beneficiary = accounts[accounts.length - 2]
+    let amount = new BigNumber(web3.utils.toWei('1', 'ether'))
+
+    await dispatcherInstance.sendTransaction({value: amount})
+    await sharedAccountInstance.lock(dispatcherInstance.address, {from: beneficiary, value: lockStake})
+
+    // Act
+    await dispatcherInstance.withdrawEther(
+      amount, 
+      passphraseEncoded, 
+      passphraseHashed, 
+      {from: beneficiary})
+    
+    let locked = await sharedAccountInstance.isLocked.call(
+        dispatcherInstance.address)
+
+    // Assert
+    assert.isFalse(locked, 'Lock should be removed')
+  })
+
   it('authenticates when not locked and called from a node', async function () {
     // Arrange
     let beneficiary = accounts[accounts.length - 2]
@@ -308,12 +393,9 @@ contract('Accounts (Lock)', function (accounts) {
     let account = accounts[accounts.length - 1]
     let amount = new BigNumber(web3.utils.toWei('1', 'ether'))
 
-    await sharedAccountInstance.lock(dispatcherInstance.address, {from: beneficiary, value: lockStake})
     await dispatcherInstance.sendTransaction({value: amount})
+    await sharedAccountInstance.lock(dispatcherInstance.address, {from: account, value: lockStake})
     await dispatcherInstance.enable2fa(passphraseEncoded, passphraseHashed, {from: account})
-
-    await web3.evm.increaseTimePromise(lockDuration.add(1))
-    await web3.evm.minePromise() // Workaround
 
     let locked = await sharedAccountInstance.isLocked.call(dispatcherInstance.address)
     assert.isFalse(locked, 'Account should not be locked')

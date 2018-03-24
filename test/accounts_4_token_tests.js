@@ -43,7 +43,7 @@ contract('Accounts (Token)', function (accounts) {
   let passphraseEncoded
   let passphraseHashed
   let lockStake
-  let node = accounts[accounts.length - 1]
+  let node = accounts[1]
 
   before(async function () {
     dcorpAccountsInstance = await DCorpAccounts.deployed()

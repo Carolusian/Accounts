@@ -50,23 +50,26 @@ contract MemberAccount is Dispatchable, IAccount, IEtherAccount, ITokenAccount, 
      * Require the user to call from the stored authorized account 
      */
     modifier authenticate(bytes32 _passphrase, bytes32 _passphraseHash) {
-        address sender = msg.sender;
-        if (authorizedAccount != 0x0) {
-            // Optional security - Requires transaction to be signed from authorized account
-            require(authorizedAccount == sender);
+        var (owner, until, stake) = shared.getLock(this);
+        if (authorizedAccount != 0x0 || shared.isNode(msg.sender)) {
+            // Authorized 
+            require(until < now); // Not locked?
+            require(authorizedAccount == 0x0 || authorizedAccount == msg.sender); // Require 2fa
         } 
         
-        else if (!shared.isNode(sender)) {
-            // Non-authorized account - Require a valid lock
-            var (owner, until, stake) = shared.getLock(this);
+        else {
+            // Anonymous
             require(until >= now); // Is locked?
-            require(owner == sender); // Is owner?
+            require(owner == msg.sender); // Owns lock?
+
+            // Reset lock
+            shared.removeLock(this);
 
             // Return stake
-            sender.transfer(stake);
+            msg.sender.transfer(stake);
         }
 
-        // Required secuirity - Password 
+        // Require passphrase 
         require(_passphraseHash != 0x0);
         require(keccak256(_passphrase) == passphraseHash);
         passphraseHash = _passphraseHash; 
