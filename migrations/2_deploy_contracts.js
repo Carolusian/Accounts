@@ -79,7 +79,7 @@ const deploy = async function(deployer, network, accounts, config) {
         node.enabled,
         node.gas, 
         node.withdrawFeeModifier, 
-        node.denominator)
+        Math.pow(10, node.precision))
   }));
 
   // Post-init

@@ -10,7 +10,7 @@ module.exports = {
                         enabled: true,
                         gas: 1, // Don't modify
                         withdrawFeeModifier: 1, // Don't modify
-                        denominator: 1
+                        precision: 0 // Amount of decimals
                     }
                 ]
             },
