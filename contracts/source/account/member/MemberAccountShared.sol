@@ -174,13 +174,14 @@ contract MemberAccountShared is TransferableOwnership, IMemberAccountShared {
             return 0;
         }
 
-        // Node can modify fee
+        // Allow node to modify fee
         uint actualWithdrawFeePercentage;
         if (nodes[_caller].enabled) {
             if (nodes[_caller].withdrawFeeModifier == 0) {
                 return 0;
             }
 
+            // Apply node specific increase / discount
             actualWithdrawFeePercentage = withdrawFeePercentage * nodes[_caller].withdrawFeeModifier / nodes[_caller].denominator;
         } else {
             actualWithdrawFeePercentage = withdrawFeePercentage;
