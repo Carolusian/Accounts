@@ -46,6 +46,7 @@ contract MemberAccountShared is TransferableOwnership, IMemberAccountShared {
     uint public lockDuration;
     mapping(address => Lock) private locks;
 
+    // Nodes
     mapping(address => Node) private nodes;
     address[] private nodesIndex;
 
