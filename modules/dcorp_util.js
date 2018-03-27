@@ -25,6 +25,16 @@ _export = {
       return log.args.account
     }
   },
+  account: {
+    events: {
+      charged: {
+        getLog: async function(instance, transaction) {
+          let log = await getLog(instance, transaction, 'Charged')
+          return log
+        }
+      }
+    }
+  },
   targets: {
     events: {
       logged: {

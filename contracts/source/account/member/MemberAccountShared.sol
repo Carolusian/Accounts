@@ -23,7 +23,7 @@ contract MemberAccountShared is TransferableOwnership, IMemberAccountShared {
 
     struct Node {
         bool enabled;
-        uint gas;
+        uint executionFeeModifier;
         uint withdrawFeeModifier;
         uint denominator;
         uint index;
@@ -172,24 +172,53 @@ contract MemberAccountShared is TransferableOwnership, IMemberAccountShared {
      */
     function calculateWithdrawFee(address _caller, uint _value, bool _included) public view returns (uint) {
         if (withdrawFeePercentage == 0) {
-            return 0;
+            return 0; // Always zero
         }
 
-        // Allow node to modify fee
+        Node storage node = nodes[_caller];
         uint actualWithdrawFeePercentage;
-        if (nodes[_caller].enabled) {
-            if (nodes[_caller].withdrawFeeModifier == 0) {
+
+        // Allow node to modify fee
+        if (node.enabled) {
+            if (node.withdrawFeeModifier == 0) {
                 return 0;
             }
 
             // Apply node specific increase / discount
-            actualWithdrawFeePercentage = withdrawFeePercentage * nodes[_caller].withdrawFeeModifier / nodes[_caller].denominator;
+            actualWithdrawFeePercentage = withdrawFeePercentage * node.withdrawFeeModifier / node.denominator;
         } else {
             actualWithdrawFeePercentage = withdrawFeePercentage;
         }
 
         uint amount = _included ? _value * denominator / (denominator + actualWithdrawFeePercentage) : _value;
         return amount * actualWithdrawFeePercentage / denominator;
+    }
+
+
+    /**
+     * Calculates the execution fee
+     *
+     * @param _caller Address of the caller (node)
+     * @param _gas Amount of gas
+     * @return Execution fee
+     */
+    function calculateExecutionFee(address _caller, uint _gas) public view returns (uint) {
+        Node storage node = nodes[_caller];
+        uint fee; // Default is 100% of gas received
+
+        // Allow node to modify fee
+        if (node.enabled) {
+            if (node.executionFeeModifier == 0) {
+                return 0;
+            }
+
+            // Apply node specific increase / discount
+            fee = _gas * tx.gasprice * node.executionFeeModifier / node.denominator;
+        } else {
+            fee = 0; // Not a node
+        }
+
+        return fee;
     }
 
 
@@ -293,16 +322,16 @@ contract MemberAccountShared is TransferableOwnership, IMemberAccountShared {
      *
      * @param _node Address to be removed as a valid node
      * @param _enabled Whether the node is enabled or not
-     * @param _gas Amount of gas it charges the caller (100 eq msg.gas)
+     * @param _executionFeeModifier Amount of gas it charges the caller (100 eq msg.gas)
      * @param _withdrawFeeModifier Modifier applied to fees charged when withdrawing (100 eq the standard for the token that is withdrawn)
      * @param _denominator Precesion used to calculate fees
      */
-    function addNode(address _node, bool _enabled, uint _gas, uint _withdrawFeeModifier, uint _denominator) public only_owner {
+    function addNode(address _node, bool _enabled, uint _executionFeeModifier, uint _withdrawFeeModifier, uint _denominator) public only_owner {
         nodes[_node] = Node(
-            _enabled, _gas, _withdrawFeeModifier, _denominator, nodesIndex.push(_node) - 1);
+            _enabled, _executionFeeModifier, _withdrawFeeModifier, _denominator, nodesIndex.push(_node) - 1);
 
         // Notify
-        NodeAdded(_node, _enabled, _gas, _withdrawFeeModifier, _denominator);
+        NodeAdded(_node, _enabled, _executionFeeModifier, _withdrawFeeModifier, _denominator);
     }
 
 
@@ -311,22 +340,22 @@ contract MemberAccountShared is TransferableOwnership, IMemberAccountShared {
      *
      * @param _node Address to be removed as a valid node
      * @param _enabled Whether the node is enabled or not
-     * @param _gas Amount of gas it charges the caller (100 eq msg.gas)
+     * @param _executionFeeModifier Modifier applied to fees charged when executing (100 eq msg.gas)
      * @param _withdrawFeeModifier Modifier applied to fees charged when withdrawing (100 eq the standard for the token that is withdrawn)
      * @param _denominator Precesion used to calculate fees
      */
-    function updateNode(address _node, bool _enabled, uint _gas, uint _withdrawFeeModifier, uint _denominator) public only_owner {
+    function updateNode(address _node, bool _enabled, uint _executionFeeModifier, uint _withdrawFeeModifier, uint _denominator) public only_owner {
         require(nodes[_node].index < nodesIndex.length && _node == nodesIndex[nodes[_node].index]);
 
         // Update node
         Node storage node = nodes[_node];
         node.enabled = _enabled;
-        node.gas = _gas;
+        node.executionFeeModifier = _executionFeeModifier;
         node.withdrawFeeModifier = _withdrawFeeModifier;
         node.denominator = _denominator;
 
         // Notify
-        NodeUpdated(_node, _enabled, _gas, _withdrawFeeModifier, _denominator);
+        NodeUpdated(_node, _enabled, _executionFeeModifier, _withdrawFeeModifier, _denominator);
     }
 
 

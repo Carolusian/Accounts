@@ -49,6 +49,7 @@ contract('Accounts (Lock)', function (accounts) {
     sharedAccountInstance = MemberAccountShared.at(await dcorpAccountsInstance.shared.call())
     passphraseEncoded = web3.eth.abi.encodeParameter('bytes32', web3.utils.fromAscii(passphrase))
     passphraseHashed = web3.utils.sha3(passphraseEncoded)
+    await sharedAccountInstance.addNode(node, true, 0, 1, 1)
   })
 
   beforeEach(async function () {
@@ -57,7 +58,6 @@ contract('Accounts (Lock)', function (accounts) {
     dispatcherInstance = MemberAccount.at(log.args.account)
     lockStake = new BigNumber(await sharedAccountInstance.lockStake.call())
     lockDuration = new BigNumber(await sharedAccountInstance.lockDuration.call())
-    await sharedAccountInstance.addNode(node, true, 1, 1, 1)
   })
 
   it('cannot obtain a lock when an account is already locked', async function () {

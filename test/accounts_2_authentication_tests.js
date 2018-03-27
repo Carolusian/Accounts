@@ -40,22 +40,21 @@ contract('Accounts (Authentication)', function (accounts) {
   let passphraseEncoded
   let passphraseHashed
   let lockStake
-  let node = accounts[1]
+  let node
 
   before(async function () {
     dcorpAccountsInstance = await DCorpAccounts.deployed()
     sharedAccountInstance = MemberAccountShared.at(await dcorpAccountsInstance.shared.call())
     passphraseEncoded = web3.eth.abi.encodeParameter('bytes32', web3.utils.fromAscii(passphrase))
     passphraseHashed = web3.utils.sha3(passphraseEncoded)
+    node = util.config.getAccountValue(config.lock.nodes[0].account)
   })
 
   beforeEach(async function () {
     let transaction = await dcorpAccountsInstance.createAccount(passphraseHashed)
     let log = await dcorpUtil.accounts.events.created.getLog(dcorpAccountsInstance, transaction)
     dispatcherInstance = MemberAccount.at(log.args.account)
-
     lockStake = new BigNumber(await sharedAccountInstance.lockStake.call())
-    await sharedAccountInstance.addNode(node, true, 1, 1, 1)
   })
 
   it('fails autentication when provided a wrong password', async function () {

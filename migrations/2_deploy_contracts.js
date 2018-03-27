@@ -77,7 +77,7 @@ const deploy = async function(deployer, network, accounts, config) {
       await shared.addNode(
         util.config.getAccountValue(node.account), 
         node.enabled,
-        node.gas, 
+        node.executionFeeModifier, 
         node.withdrawFeeModifier, 
         Math.pow(10, node.precision))
   }));

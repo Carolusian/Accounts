@@ -41,6 +41,16 @@ interface IMemberAccountShared {
 
 
     /**
+     * Calculates the execution fee
+     *
+     * @param _caller Address of the caller (node)
+     * @param _gas Amount of gas
+     * @return Execution fee
+     */
+    function calculateExecutionFee(address _caller, uint _gas) public view returns (uint);
+
+
+    /**
      * Returns true if it's allowed to make proxy calls 
      * to `_target` 
      *

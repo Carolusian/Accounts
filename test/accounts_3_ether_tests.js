@@ -40,7 +40,7 @@ contract('Accounts (Ether)', function (accounts) {
   let passphraseHashed
   let minEtherWithdrawAmount
   let lockStake
-  let node = accounts[accounts.length - 1]
+  let node = accounts[1]
 
   before(async function () {
     dcorpAccountsInstance = await DCorpAccounts.deployed()
@@ -49,7 +49,7 @@ contract('Accounts (Ether)', function (accounts) {
     passphraseHashed = web3.utils.sha3(passphraseEncoded)
 
     await sharedAccountInstance.addNode(
-      node, true, 100, 100, 100)
+      node, true, 0, 1, 1)
   })
 
   beforeEach(async function () {
@@ -183,13 +183,13 @@ contract('Accounts (Ether)', function (accounts) {
     let beneficiaryBalanceBefore = new BigNumber(await web3.eth.getBalancePromise(beneficiary))
 
     await sharedAccountInstance.updateNode(
-      node, true, 1, 1, 1, {from: owner})
+      node, true, 0, 1, 1, {from: owner})
 
     let originalFee = new BigNumber(
       await sharedAccountInstance.calculateWithdrawFee.call(node, amount, false))
 
     await sharedAccountInstance.updateNode(
-      node, true, denominator, increasedFeePercentage, denominator, {from: owner})
+      node, true, 0, increasedFeePercentage, denominator, {from: owner})
 
     let increasedFee = new BigNumber(
       await sharedAccountInstance.calculateWithdrawFee.call(node, amount, false))
@@ -231,13 +231,13 @@ contract('Accounts (Ether)', function (accounts) {
     let beneficiaryBalanceBefore = new BigNumber(await web3.eth.getBalancePromise(beneficiary))
 
     await sharedAccountInstance.updateNode(
-      node, true, 1, 1, 1, {from: owner})
+      node, true, 0, 1, 1, {from: owner})
 
     let originalFee = new BigNumber(
       await sharedAccountInstance.calculateWithdrawFee.call(node, amount, false))
 
     await sharedAccountInstance.updateNode(
-      node, true, denominator, increasedFeePercentage, denominator, {from: owner})
+      node, true, 0, increasedFeePercentage, denominator, {from: owner})
 
     let increasedFee = new BigNumber(
       await sharedAccountInstance.calculateWithdrawFee.call(node, amount, false))

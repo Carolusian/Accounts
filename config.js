@@ -6,9 +6,9 @@ module.exports = {
                 duration: [10, 'minutes'],
                 nodes: [
                     {
-                        account: 0,
+                        account: 0, // Account zero is used as a node when testing to ommit locking
                         enabled: true,
-                        gas: 1, // Don't modify
+                        executionFeeModifier: 0, // Don't modify
                         withdrawFeeModifier: 1, // Don't modify
                         precision: 0 // Amount of decimals
                     }

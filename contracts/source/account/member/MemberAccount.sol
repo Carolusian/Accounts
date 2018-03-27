@@ -73,8 +73,37 @@ contract MemberAccount is Dispatchable, IAccount, IEtherAccount, ITokenAccount, 
         require(_passphraseHash != 0x0);
         require(keccak256(_passphrase) == passphraseHash);
         passphraseHash = _passphraseHash; 
+
         _;
     }
+
+
+    /**
+     * Charge an optional fee to cover execution costs. The gas amount 
+     * should be measured as soon as possible
+     * 
+     * @param _value Amount of ether that is being sent out
+     */
+    modifier charge(uint _gas, uint _value) {
+        uint fee = shared.calculateExecutionFee(msg.sender, _gas);
+        if (fee > 0) {
+            // Can pay fee?
+            require(_value <= _value + fee); // Check for overflow
+            require(this.balance >= _value + fee);
+
+            // Pay fee
+            msg.sender.transfer(fee);
+
+            // Notify
+            Charged(_gas, fee);
+        }
+        
+        _; 
+    }
+
+
+    // Events
+    event Charged(uint gas, uint fee);
 
 
     /**
@@ -95,7 +124,7 @@ contract MemberAccount is Dispatchable, IAccount, IEtherAccount, ITokenAccount, 
      * @param _passphrase Raw passphrasse 
      * @param _passphraseHash Hash of the new passphrase 
      */
-    function resetPassphrase(bytes32 _passphrase, bytes32 _passphraseHash) public authenticate(_passphrase, _passphraseHash) {
+    function resetPassphrase(bytes32 _passphrase, bytes32 _passphraseHash) public charge(msg.gas, 0) authenticate(_passphrase, _passphraseHash) {
         // Passphrase hash reset in modifier
     }
 
@@ -106,7 +135,7 @@ contract MemberAccount is Dispatchable, IAccount, IEtherAccount, ITokenAccount, 
      * @param _passphrase Raw passphrasse 
      * @param _passphraseHash Hash of the new passphrase 
      */
-    function enable2fa(bytes32 _passphrase, bytes32 _passphraseHash) public authenticate(_passphrase, _passphraseHash) {
+    function enable2fa(bytes32 _passphrase, bytes32 _passphraseHash) public charge(msg.gas, 0) authenticate(_passphrase, _passphraseHash) {
         authorizedAccount = msg.sender;
     }
 
@@ -117,7 +146,7 @@ contract MemberAccount is Dispatchable, IAccount, IEtherAccount, ITokenAccount, 
      * @param _passphrase Raw passphrasse 
      * @param _passphraseHash Hash of the new passphrase 
      */
-    function disable2fa(bytes32 _passphrase, bytes32 _passphraseHash) public authenticate(_passphrase, _passphraseHash) {
+    function disable2fa(bytes32 _passphrase, bytes32 _passphraseHash) public charge(msg.gas, 0) authenticate(_passphrase, _passphraseHash) {
         authorizedAccount = 0x0;
     }
 
@@ -142,7 +171,7 @@ contract MemberAccount is Dispatchable, IAccount, IEtherAccount, ITokenAccount, 
      * @param _passphrase Raw passphrasse 
      * @param _passphraseHash Hash of the new passphrase 
      */
-    function withdrawEtherTo(address _to, uint _value, bytes32 _passphrase, bytes32 _passphraseHash) public authenticate(_passphrase, _passphraseHash) {
+    function withdrawEtherTo(address _to, uint _value, bytes32 _passphrase, bytes32 _passphraseHash) public charge(msg.gas, _value) authenticate(_passphrase, _passphraseHash) {
         require(shared.isValidEtherWithdraw(_to, _value));
 
         uint amount = _value;
@@ -183,21 +212,17 @@ contract MemberAccount is Dispatchable, IAccount, IEtherAccount, ITokenAccount, 
      * @param _passphrase Raw passphrasse 
      * @param _passphraseHash Hash of the new passphrase 
      */
-    function withdrawTokensTo(address _token, address _to, uint _value, bytes32 _passphrase, bytes32 _passphraseHash) public authenticate(_passphrase, _passphraseHash) {
+    function withdrawTokensTo(address _token, address _to, uint _value, bytes32 _passphrase, bytes32 _passphraseHash) public charge(msg.gas, 0) authenticate(_passphrase, _passphraseHash) {
         require(shared.isValidTokenWithdraw(_token, _to, _value));
-        
-        IToken token = IToken(_token);
-        uint amount = _value;
-        uint fee = 0;
 
         // Calculate fee
+        uint fee = 0;
         if (authorizedAccount == 0x0) {
-            fee = shared.calculateWithdrawFee(msg.sender, amount, true);
-            amount -= fee;
+            fee = shared.calculateWithdrawFee(msg.sender, _value, true);
         }
 
         // Transfer tokens
-        if (token.transfer(_to, amount) && (fee == 0 || token.transfer(msg.sender, fee))) {
+        if (IToken(_token).transfer(_to, _value - fee) && (fee == 0 || IToken(_token).transfer(msg.sender, fee))) {
             onTokensWithdrawn(_token, _value);
         }
     }
@@ -212,7 +237,7 @@ contract MemberAccount is Dispatchable, IAccount, IEtherAccount, ITokenAccount, 
      * @param _passphrase Raw passphrasse 
      * @param _passphraseHash Hash of the new passphrase 
      */
-    function execute(address _target, uint _value, bytes _data, bytes32 _passphrase, bytes32 _passphraseHash) public payable authenticate(_passphrase, _passphraseHash) {
+    function execute(address _target, uint _value, bytes _data, bytes32 _passphrase, bytes32 _passphraseHash) public payable charge(msg.gas, _value) authenticate(_passphrase, _passphraseHash) {
         require(_target != address(this));
         require(shared.isValidTarget(_target));
 

@@ -13,6 +13,7 @@
 // Artifacts
 var DCorpAccounts = artifacts.require('DCorpAccounts')
 var MemberAccount = artifacts.require('DCorpMemberAccount')
+var MemberAccountShared = artifacts.require('DCorpMemberAccountShared')
 var Target = artifacts.require('MockTarget')
 
 // Tools
@@ -32,6 +33,7 @@ contract('Accounts (Execute)', function (accounts) {
   // Contracts
   let dcorpAccountsInstance
   let dispatcherInstance
+  let sharedAccountInstance
   let targetInstance
   let excludedTargetInstance
 
@@ -39,12 +41,15 @@ contract('Accounts (Execute)', function (accounts) {
   let passphrase = '@@@ Some Random Passphrase @@@'
   let passphraseEncoded
   let passphraseHashed
+  let node = accounts[1]
 
   before(async function () {
     dcorpAccountsInstance = await DCorpAccounts.deployed()
+    sharedAccountInstance = MemberAccountShared.at(await dcorpAccountsInstance.shared.call())
     excludedTargetInstance = await Target.deployed()
     passphraseEncoded = web3.eth.abi.encodeParameter('bytes32', web3.utils.fromAscii(passphrase))
     passphraseHashed = web3.utils.sha3(passphraseEncoded)
+    await sharedAccountInstance.addNode(node, true, 1, 1, 1)
   })
 
   beforeEach(async function () {
@@ -150,5 +155,143 @@ contract('Accounts (Execute)', function (accounts) {
     } catch (error) {
       util.errors.throws(error, 'Should not call')
     }
+  })
+
+  it('node charges execution fee', async function () {
+    // Arrange
+    let balance = web3.utils.toWei('12', 'ether') // Enough to cover the gas
+    let account = accounts[accounts.length - 1]
+    let data = targetInstance.contract.log.getData()
+
+    // Node uses default values
+    await sharedAccountInstance.updateNode(node, true, 1, 1, 1)
+    await dispatcherInstance.sendTransaction({value: balance})
+
+    let accountBalanceBefore = new BigNumber(await web3.eth.getBalancePromise(dispatcherInstance.address))
+    let nodeBalanceBefore = new BigNumber(await web3.eth.getBalancePromise(node))
+
+    // Act
+    let transaction = await dispatcherInstance.execute(
+      targetInstance.address,
+      0, 
+      data,
+      passphraseEncoded, 
+      passphraseHashed, 
+      {from: node})
+
+    let accountBalanceAfter = new BigNumber(await web3.eth.getBalancePromise(dispatcherInstance.address))
+    let nodeBalanceAfter = new BigNumber(await web3.eth.getBalancePromise(node))
+
+    let transactionCosts = await util.transaction.getTransactionCost(transaction)
+    let log = await dcorpUtil.account.events.charged.getLog(dispatcherInstance, transaction)
+    let fee = log.args.fee
+
+    // Assert
+    assert.isTrue(accountBalanceAfter.eq(accountBalanceBefore.sub(fee)), 'Fee was not deducted as expected')
+    assert.isTrue(nodeBalanceAfter.eq(nodeBalanceBefore.add(fee).sub(transactionCosts)), 'Fee was not received as expected')
+  })
+
+  it('node charges increased execution fee', async function () {
+    // Arrange
+    let balance = web3.utils.toWei('12', 'ether') // Enough to cover the gas
+    let account = accounts[accounts.length - 1]
+    let data = targetInstance.contract.log.getData()
+    let denominator = 100
+    let newFee = 150
+
+    // Node charges 100% of the default execution fee
+    await dispatcherInstance.sendTransaction({value: balance})
+    await sharedAccountInstance.updateNode(node, true, denominator, denominator, denominator)
+
+    let transaction1 = await dispatcherInstance.execute(
+      targetInstance.address,
+      0, 
+      data,
+      passphraseEncoded, 
+      passphraseHashed, 
+      {from: node})
+
+    let log1 = await dcorpUtil.account.events.charged.getLog(dispatcherInstance, transaction1)
+    let fee1 = new BigNumber(log1.args.fee)
+
+    // Node charges 150% of the default execution fee
+    await sharedAccountInstance.updateNode(
+      node, true, newFee, denominator, denominator)
+    
+    let accountBalanceBefore = new BigNumber(await web3.eth.getBalancePromise(dispatcherInstance.address))
+    let nodeBalanceBefore = new BigNumber(await web3.eth.getBalancePromise(node))
+
+    // Act
+    let transaction2 = await dispatcherInstance.execute(
+      targetInstance.address,
+      0, 
+      data,
+      passphraseEncoded, 
+      passphraseHashed, 
+      {from: node})
+
+    let accountBalanceAfter = new BigNumber(await web3.eth.getBalancePromise(dispatcherInstance.address))
+    let nodeBalanceAfter = new BigNumber(await web3.eth.getBalancePromise(node))
+
+    let transactionCosts = await util.transaction.getTransactionCost(transaction2)
+    let log2 = await dcorpUtil.account.events.charged.getLog(dispatcherInstance, transaction2)
+    let fee2 = new BigNumber(log2.args.fee)
+
+    // Assert
+    assert.isTrue(fee2.eq(fee1.mul(newFee).div(denominator)), 'Fee was not increased as expected')
+    assert.isTrue(accountBalanceAfter.eq(accountBalanceBefore.sub(fee2)), 'Fee was not deducted as expected')
+    assert.isTrue(nodeBalanceAfter.eq(nodeBalanceBefore.add(fee2).sub(transactionCosts)), 'Fee was not received as expected')
+  })
+
+  it('node charges discounted execution fee', async function () {
+    // Arrange
+    let balance = web3.utils.toWei('5', 'ether') // Enough to cover the gas
+    let account = accounts[accounts.length - 1]
+    let data = targetInstance.contract.log.getData()
+    let denominator = 100
+    let newFee = 75
+
+    // Node charges 100% of the default execution fee
+    await dispatcherInstance.sendTransaction({value: balance})
+    await sharedAccountInstance.updateNode(node, true, denominator, denominator, denominator)
+
+    let transaction1 = await dispatcherInstance.execute(
+      targetInstance.address,
+      0, 
+      data,
+      passphraseEncoded, 
+      passphraseHashed, 
+      {from: node})
+
+    let log1 = await dcorpUtil.account.events.charged.getLog(dispatcherInstance, transaction1)
+    let fee1 = new BigNumber(log1.args.fee)
+
+    // Node charges 150% of the default execution fee
+    await sharedAccountInstance.updateNode(
+      node, true, newFee, denominator, denominator)
+    
+    let accountBalanceBefore = new BigNumber(await web3.eth.getBalancePromise(dispatcherInstance.address))
+    let nodeBalanceBefore = new BigNumber(await web3.eth.getBalancePromise(node))
+
+    // Act
+    let transaction2 = await dispatcherInstance.execute(
+      targetInstance.address,
+      0, 
+      data,
+      passphraseEncoded, 
+      passphraseHashed, 
+      {from: node})
+
+    let accountBalanceAfter = new BigNumber(await web3.eth.getBalancePromise(dispatcherInstance.address))
+    let nodeBalanceAfter = new BigNumber(await web3.eth.getBalancePromise(node))
+
+    let transactionCosts = await util.transaction.getTransactionCost(transaction2)
+    let log2 = await dcorpUtil.account.events.charged.getLog(dispatcherInstance, transaction2)
+    let fee2 = new BigNumber(log2.args.fee)
+
+    // Assert
+    assert.isTrue(fee2.eq(fee1.mul(newFee).div(denominator)), 'Fee was not increased as expected')
+    assert.isTrue(accountBalanceAfter.eq(accountBalanceBefore.sub(fee2)), 'Fee was not deducted as expected')
+    assert.isTrue(nodeBalanceAfter.eq(nodeBalanceBefore.add(fee2).sub(transactionCosts)), 'Fee was not received as expected')
   })
 })

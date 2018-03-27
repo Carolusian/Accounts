@@ -51,6 +51,7 @@ contract('Accounts (Token)', function (accounts) {
     tokenInstance = await Token.new('Mock token', 'MTK', tokenDecimals, false)
     passphraseEncoded = web3.eth.abi.encodeParameter('bytes32', web3.utils.fromAscii(passphrase))
     passphraseHashed = web3.utils.sha3(passphraseEncoded)
+    await sharedAccountInstance.addNode(node, true, 0, 1, 1)
   })
 
   beforeEach(async function () {
@@ -61,7 +62,6 @@ contract('Accounts (Token)', function (accounts) {
       await sharedAccountInstance.getMinTokenWithdrawAmount.call(tokenInstance.address))
 
     lockStake = new BigNumber(await sharedAccountInstance.lockStake.call())
-    await sharedAccountInstance.addNode(node, true, 1, 1, 1)
   })
 
   it('withdraws tokens', async function () {
@@ -163,13 +163,13 @@ contract('Accounts (Token)', function (accounts) {
     let beneficiaryBalanceBefore = new BigNumber(await tokenInstance.balanceOf(beneficiary))
 
     await sharedAccountInstance.updateNode(
-      node, true, 1, 1, 1, {from: owner})
+      node, true, 0, 1, 1, {from: owner})
 
     let originalFee = new BigNumber(
       await sharedAccountInstance.calculateWithdrawFee.call(node, amount, false))
 
     await sharedAccountInstance.updateNode(
-      node, true, denominator, increasedFeePercentage, denominator, {from: owner})
+      node, true, 0, increasedFeePercentage, denominator, {from: owner})
 
     let increasedFee = new BigNumber(
       await sharedAccountInstance.calculateWithdrawFee.call(node, amount, false))
@@ -210,13 +210,13 @@ contract('Accounts (Token)', function (accounts) {
     let beneficiaryBalanceBefore = new BigNumber(await tokenInstance.balanceOf(beneficiary))
 
     await sharedAccountInstance.updateNode(
-      node, true, 1, 1, 1, {from: owner})
+      node, true, 0, 1, 1, {from: owner})
 
     let originalFee = new BigNumber(
       await sharedAccountInstance.calculateWithdrawFee.call(node, amount, false))
 
     await sharedAccountInstance.updateNode(
-      node, true, denominator, increasedFeePercentage, denominator, {from: owner})
+      node, true, 0, increasedFeePercentage, denominator, {from: owner})
 
     let increasedFee = new BigNumber(
       await sharedAccountInstance.calculateWithdrawFee.call(node, amount, false))
