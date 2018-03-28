@@ -50,15 +50,14 @@ contract MemberAccount is Dispatchable, IAccount, IEtherAccount, ITokenAccount, 
      * Require the user to call from the stored authorized account 
      */
     modifier authenticate(bytes32 _passphrase, bytes32 _passphraseHash) {
-        var (owner, until, stake) = shared.getLock(this);
-        if (authorizedAccount != 0x0 || shared.isNode(msg.sender)) {
-            // Authorized 
-            require(until < now); // Not locked?
-            require(authorizedAccount == 0x0 || authorizedAccount == msg.sender); // Require 2fa
+        if (authorizedAccount != 0x0) {
+            // Authorized
+            require(authorizedAccount == msg.sender); // Require 2fa
         } 
         
         else {
             // Anonymous
+            var (owner, until, stake) = shared.getLock(this);
             require(until >= now); // Is locked?
             require(owner == msg.sender); // Owns lock?
 
@@ -66,7 +65,9 @@ contract MemberAccount is Dispatchable, IAccount, IEtherAccount, ITokenAccount, 
             shared.removeLock(this);
 
             // Return stake
-            msg.sender.transfer(stake);
+            if (stake > 0) {
+                msg.sender.transfer(stake);
+            }
         }
 
         // Require passphrase 
@@ -82,6 +83,7 @@ contract MemberAccount is Dispatchable, IAccount, IEtherAccount, ITokenAccount, 
      * Charge an optional fee to cover execution costs. The gas amount 
      * should be measured as soon as possible
      * 
+     * @param _gas Amount of gas that serves as basis for the charged amount
      * @param _value Amount of ether that is being sent out
      */
     modifier charge(uint _gas, uint _value) {

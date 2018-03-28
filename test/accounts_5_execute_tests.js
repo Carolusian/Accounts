@@ -49,7 +49,7 @@ contract('Accounts (Execute)', function (accounts) {
     excludedTargetInstance = await Target.deployed()
     passphraseEncoded = web3.eth.abi.encodeParameter('bytes32', web3.utils.fromAscii(passphrase))
     passphraseHashed = web3.utils.sha3(passphraseEncoded)
-    await sharedAccountInstance.addNode(node, true, 1, 1, 1)
+    await sharedAccountInstance.addNode(node, true, 0, 1, 1)
   })
 
   beforeEach(async function () {
@@ -68,6 +68,9 @@ contract('Accounts (Execute)', function (accounts) {
     let recordCountBefore = new BigNumber(
       await targetInstance.getRecordCount.call())
 
+    await sharedAccountInstance.lock(
+      dispatcherInstance.address, {from: node})
+
     // Act
     await dispatcherInstance.execute(
       targetInstance.address,
@@ -75,7 +78,7 @@ contract('Accounts (Execute)', function (accounts) {
       data,
       passphraseEncoded, 
       passphraseHashed, 
-      {value: amount})
+      {from: node, value: amount})
 
     let recordCountAfter = new BigNumber(
       await targetInstance.getRecordCount.call())
@@ -92,9 +95,8 @@ contract('Accounts (Execute)', function (accounts) {
     let paramEncoded = web3.eth.abi.encodeParameter('bytes32', web3.utils.fromAscii(param))
     let data = targetInstance.contract.logParam.getData(paramEncoded)
 
-    await dispatcherInstance.sendTransaction({
-      value: amount
-    })
+    await dispatcherInstance.sendTransaction({value: amount})
+    await sharedAccountInstance.lock(dispatcherInstance.address, {from: node})
 
     // Act
     await dispatcherInstance.execute(
@@ -102,7 +104,8 @@ contract('Accounts (Execute)', function (accounts) {
       amount, 
       data,
       passphraseEncoded, 
-      passphraseHashed)
+      passphraseHashed, 
+      {from: node})
 
     let expectedLog = {
       event: 'LoggedParam',
@@ -122,6 +125,9 @@ contract('Accounts (Execute)', function (accounts) {
     let account = accounts[accounts.length - 1]
     let amount = web3.utils.toWei('1', 'ether')
 
+    await sharedAccountInstance.lock(
+      dispatcherInstance.address, {from: node})
+
     // Act
     try {
       await dispatcherInstance.execute(
@@ -130,7 +136,7 @@ contract('Accounts (Execute)', function (accounts) {
         0x0,
         passphraseEncoded, 
         passphraseHashed, 
-        {value: amount})
+        {from: node, value: amount})
       assert.isFalse(true, 'Error should have been thrown')
     } catch (error) {
       util.errors.throws(error, 'Should not call')
@@ -142,6 +148,9 @@ contract('Accounts (Execute)', function (accounts) {
     let account = accounts[accounts.length - 1]
     let amount = web3.utils.toWei('1', 'ether')
 
+    await sharedAccountInstance.lock(
+      dispatcherInstance.address, {from: node})
+
     // Act
     try {
       await dispatcherInstance.execute(
@@ -150,7 +159,7 @@ contract('Accounts (Execute)', function (accounts) {
         0x0,
         passphraseEncoded, 
         passphraseHashed, 
-        {value: amount})
+        {from: node, value: amount})
       assert.isFalse(true, 'Error should have been thrown')
     } catch (error) {
       util.errors.throws(error, 'Should not call')
@@ -166,6 +175,7 @@ contract('Accounts (Execute)', function (accounts) {
     // Node uses default values
     await sharedAccountInstance.updateNode(node, true, 1, 1, 1)
     await dispatcherInstance.sendTransaction({value: balance})
+    await sharedAccountInstance.lock(dispatcherInstance.address, {from: node})
 
     let accountBalanceBefore = new BigNumber(await web3.eth.getBalancePromise(dispatcherInstance.address))
     let nodeBalanceBefore = new BigNumber(await web3.eth.getBalancePromise(node))
@@ -201,6 +211,7 @@ contract('Accounts (Execute)', function (accounts) {
 
     // Node charges 100% of the default execution fee
     await dispatcherInstance.sendTransaction({value: balance})
+    await sharedAccountInstance.lock(dispatcherInstance.address, {from: node})
     await sharedAccountInstance.updateNode(node, true, denominator, denominator, denominator)
 
     let transaction1 = await dispatcherInstance.execute(
@@ -213,6 +224,9 @@ contract('Accounts (Execute)', function (accounts) {
 
     let log1 = await dcorpUtil.account.events.charged.getLog(dispatcherInstance, transaction1)
     let fee1 = new BigNumber(log1.args.fee)
+
+    await sharedAccountInstance.lock(
+      dispatcherInstance.address, {from: node})
 
     // Node charges 150% of the default execution fee
     await sharedAccountInstance.updateNode(
@@ -253,6 +267,7 @@ contract('Accounts (Execute)', function (accounts) {
 
     // Node charges 100% of the default execution fee
     await dispatcherInstance.sendTransaction({value: balance})
+    await sharedAccountInstance.lock(dispatcherInstance.address, {from: node})
     await sharedAccountInstance.updateNode(node, true, denominator, denominator, denominator)
 
     let transaction1 = await dispatcherInstance.execute(
@@ -265,6 +280,9 @@ contract('Accounts (Execute)', function (accounts) {
 
     let log1 = await dcorpUtil.account.events.charged.getLog(dispatcherInstance, transaction1)
     let fee1 = new BigNumber(log1.args.fee)
+
+    await sharedAccountInstance.lock(
+      dispatcherInstance.address, {from: node})
 
     // Node charges 150% of the default execution fee
     await sharedAccountInstance.updateNode(

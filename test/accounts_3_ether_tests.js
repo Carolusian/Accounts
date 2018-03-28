@@ -86,9 +86,8 @@ contract('Accounts (Ether)', function (accounts) {
     let beneficiary = accounts[accounts.length - 2]
     let amount = BigNumber.max(minEtherWithdrawAmount, web3.utils.toWei('12', 'ether'))
     
-    await dispatcherInstance.sendTransaction({
-      value: amount
-    })
+    await dispatcherInstance.sendTransaction({value: amount})
+    await sharedAccountInstance.lock(dispatcherInstance.address, {from: node})
 
     let beneficiaryBalanceBefore = new BigNumber(
       await web3.eth.getBalancePromise(beneficiary))
@@ -114,9 +113,8 @@ contract('Accounts (Ether)', function (accounts) {
     let beneficiary = accounts[accounts.length - 1]
     let amount = minEtherWithdrawAmount.sub(1)
     
-    await dispatcherInstance.sendTransaction({
-      value: amount
-    })
+    await dispatcherInstance.sendTransaction({value: amount})
+    await sharedAccountInstance.lock(dispatcherInstance.address, {from: node})
 
     let accountBalanceBefore = new BigNumber(
       await web3.eth.getBalancePromise(dispatcherInstance.address))
@@ -124,7 +122,7 @@ contract('Accounts (Ether)', function (accounts) {
     // Act
     try {
       await dispatcherInstance.withdrawEtherTo(
-        beneficiary, amount, passphraseEncoded, passphraseHashed)
+        beneficiary, amount, passphraseEncoded, passphraseHashed, {from: node})
       assert.isFalse(true, 'Error should have been thrown')
     } catch (error) {
       util.errors.throws(error, 'Should not withdraw')
@@ -142,9 +140,8 @@ contract('Accounts (Ether)', function (accounts) {
     let beneficiary = accounts[accounts.length - 2]
     let amount = BigNumber.max(minEtherWithdrawAmount, web3.utils.toWei('12', 'ether'))
 
-    await dispatcherInstance.sendTransaction({
-      value: amount
-    })
+    await dispatcherInstance.sendTransaction({value: amount})
+    await sharedAccountInstance.lock(dispatcherInstance.address, {from: node})
 
     let nodeBalanceBefore = new BigNumber(await web3.eth.getBalancePromise(node))
     let beneficiaryBalanceBefore = new BigNumber(await web3.eth.getBalancePromise(beneficiary))
@@ -175,9 +172,8 @@ contract('Accounts (Ether)', function (accounts) {
     let increasedFeePercentage = 120
     let denominator = 100
 
-    await dispatcherInstance.sendTransaction({
-      value: amount
-    })
+    await dispatcherInstance.sendTransaction({value: amount})
+    await sharedAccountInstance.lock(dispatcherInstance.address, {from: node})
 
     let nodeBalanceBefore = new BigNumber(await web3.eth.getBalancePromise(node))
     let beneficiaryBalanceBefore = new BigNumber(await web3.eth.getBalancePromise(beneficiary))
@@ -223,9 +219,8 @@ contract('Accounts (Ether)', function (accounts) {
     let increasedFeePercentage = 25
     let denominator = 100
 
-    await dispatcherInstance.sendTransaction({
-      value: amount
-    })
+    await dispatcherInstance.sendTransaction({value: amount})
+    await sharedAccountInstance.lock(dispatcherInstance.address, {from: node})
 
     let nodeBalanceBefore = new BigNumber(await web3.eth.getBalancePromise(node))
     let beneficiaryBalanceBefore = new BigNumber(await web3.eth.getBalancePromise(beneficiary))

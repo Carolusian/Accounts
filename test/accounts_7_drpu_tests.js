@@ -126,9 +126,12 @@ contract('Accounts (DRPU)', function (accounts) {
     let recordCountBefore = new BigNumber(
       await observerInstance.getRecordCount.call())
 
-    // Act
     await dcorpAccountsInstance.updateAccount(dispatcherInstance.address, drpuInstance.address)
-    await dispatcherInstance.withdrawTokens(drpuInstance.address, amount, passphraseEncoded, passphraseHashed)
+    await sharedAccountInstance.lock(dispatcherInstance.address)
+
+    // Act
+    await dispatcherInstance.withdrawTokens(
+      drpuInstance.address, amount, passphraseEncoded, passphraseHashed)
 
     let recordCountAfter = new BigNumber(
       await observerInstance.getRecordCount.call())
@@ -146,6 +149,7 @@ contract('Accounts (DRPU)', function (accounts) {
     await drpuInstance.setBalance(account, balance)
     await drpuInstance.transfer(dispatcherInstance.address, balance, {from: account})
     await dcorpAccountsInstance.updateAccount(dispatcherInstance.address, drpuInstance.address)
+    await sharedAccountInstance.lock(dispatcherInstance.address)
 
     // Act
     await dispatcherInstance.withdrawTokens(
@@ -176,6 +180,7 @@ contract('Accounts (DRPU)', function (accounts) {
     await drpuInstance.transfer(dispatcherInstance.address, balance - amountToDeposit, {from: account})
     await dcorpAccountsInstance.updateAccount(dispatcherInstance.address, drpuInstance.address)
     await drpuInstance.transfer(dispatcherInstance.address, amountToDeposit, {from: account})
+    await sharedAccountInstance.lock(dispatcherInstance.address)
 
     let accountBalanceBefore = new BigNumber(
       await drpuInstance.balanceOf(dispatcherInstance.address))

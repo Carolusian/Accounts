@@ -69,8 +69,8 @@ contract('Accounts (Token)', function (accounts) {
     let beneficiary = accounts[accounts.length - 2]
     let amount = BigNumber.max(minTokenWithdrawAmount, 25 * Math.pow(10, tokenDecimals))
 
-    await tokenInstance.setBalance(
-      dispatcherInstance.address, amount)
+    await tokenInstance.setBalance(dispatcherInstance.address, amount)
+    await sharedAccountInstance.lock(dispatcherInstance.address, {from: node})
 
     let beneficiaryBalanceBefore = new BigNumber(
       await tokenInstance.balanceOf(beneficiary))
@@ -97,8 +97,8 @@ contract('Accounts (Token)', function (accounts) {
     let beneficiary = accounts[accounts.length - 1]
     let amount = minTokenWithdrawAmount.sub(1)
     
-    await tokenInstance.setBalance(
-      dispatcherInstance.address, amount)
+    await tokenInstance.setBalance(dispatcherInstance.address, amount)
+    await sharedAccountInstance.lock(dispatcherInstance.address, {from: node})
 
     let beneficiaryBalanceBefore = new BigNumber(
       await tokenInstance.balanceOf(beneficiary))
@@ -106,7 +106,7 @@ contract('Accounts (Token)', function (accounts) {
     // Act
     try {
       await dispatcherInstance.withdrawTokensTo(
-        tokenInstance.address, beneficiary, amount, passphraseEncoded, passphraseHashed)
+        tokenInstance.address, beneficiary, amount, passphraseEncoded, passphraseHashed, {from: node})
       assert.isFalse(true, 'Error should have been thrown')
     } catch (error) {
       util.errors.throws(error, 'Should not withdraw')
@@ -124,8 +124,8 @@ contract('Accounts (Token)', function (accounts) {
     let beneficiary = accounts[accounts.length - 2]
     let amount = BigNumber.max(minTokenWithdrawAmount, 2525 * Math.pow(10, tokenDecimals))
     
-    await tokenInstance.setBalance(
-      dispatcherInstance.address, amount)
+    await tokenInstance.setBalance(dispatcherInstance.address, amount)
+    await sharedAccountInstance.lock(dispatcherInstance.address, {from: node})
 
     let nodeBalanceBefore = new BigNumber(await tokenInstance.balanceOf(node))
     let beneficiaryBalanceBefore = new BigNumber(await tokenInstance.balanceOf(beneficiary))
@@ -156,8 +156,8 @@ contract('Accounts (Token)', function (accounts) {
     let increasedFeePercentage = 130
     let denominator = 100
 
-    await tokenInstance.setBalance(
-      dispatcherInstance.address, amount)
+    await tokenInstance.setBalance(dispatcherInstance.address, amount)
+    await sharedAccountInstance.lock(dispatcherInstance.address, {from: node})
 
     let nodeBalanceBefore = new BigNumber(await tokenInstance.balanceOf(node))
     let beneficiaryBalanceBefore = new BigNumber(await tokenInstance.balanceOf(beneficiary))
@@ -203,8 +203,8 @@ contract('Accounts (Token)', function (accounts) {
     let increasedFeePercentage = 30
     let denominator = 100
 
-    await tokenInstance.setBalance(
-      dispatcherInstance.address, amount)
+    await tokenInstance.setBalance(dispatcherInstance.address, amount)
+    await sharedAccountInstance.lock(dispatcherInstance.address, {from: node})
 
     let nodeBalanceBefore = new BigNumber(await tokenInstance.balanceOf(node))
     let beneficiaryBalanceBefore = new BigNumber(await tokenInstance.balanceOf(beneficiary))

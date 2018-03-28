@@ -41,14 +41,15 @@ contract MemberAccountShared is TransferableOwnership, IMemberAccountShared {
     // Proxy rules
     mapping(address => bool) private disallowedProxyTargets;
 
+    // Nodes
+    mapping(address => Node) private nodes;
+    address[] private nodesIndex;
+
     // Auth
     uint public lockStake;
     uint public lockDuration;
     mapping(address => Lock) private locks;
 
-    // Nodes
-    mapping(address => Node) private nodes;
-    address[] private nodesIndex;
 
     // Events
     event NodeAdded(address node, bool enabled, uint gas, uint withdrawFeeModifier, uint denominator);
@@ -165,9 +166,9 @@ contract MemberAccountShared is TransferableOwnership, IMemberAccountShared {
     /**
      * Calculates the withdraw fee
      *
+     * @param _caller Address of the caller (node)
      * @param _value Amount that was withdrawn
      * @param _included Whether the fee is included in _value
-     * @param _caller Address of the caller (node)
      * @return Withdraw fee
      */
     function calculateWithdrawFee(address _caller, uint _value, bool _included) public view returns (uint) {
@@ -199,7 +200,7 @@ contract MemberAccountShared is TransferableOwnership, IMemberAccountShared {
      * Calculates the execution fee
      *
      * @param _caller Address of the caller (node)
-     * @param _gas Amount of gas
+     * @param _gas Amount of gas that serves as the basis for the fee 
      * @return Execution fee
      */
     function calculateExecutionFee(address _caller, uint _gas) public view returns (uint) {
@@ -287,17 +288,19 @@ contract MemberAccountShared is TransferableOwnership, IMemberAccountShared {
      * @param _owner The owner of the lock
      */
     function lockFor(address _account, address _owner) public payable {
-        uint stake = msg.value;
-        
-        require(stake >= lockStake); // Sufficient stake
         require(locks[_account].until < now); // Not currently locked
+
+        // Handle stake (nodes are ommited)
+        if (msg.sender != _owner || !isNode(msg.sender)) {
+            require(msg.value >= lockStake); // Sufficient stake
+
+            // Return stake to account
+            _account.transfer(msg.value); 
+        }
 
         // Obtain lock
         locks[_account] = Lock(
-            _owner, now + lockDuration, stake);
-
-        // Return stake to account
-        _account.transfer(stake);
+            _owner, now + lockDuration, msg.value);
     }
 
 

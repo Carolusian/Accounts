@@ -69,9 +69,8 @@ contract('Accounts (Authentication)', function (accounts) {
     let wrongPassphrase = '||| Wrong Passphrase |||'
     let wrongPassphraseEncoded = web3.eth.abi.encodeParameter('bytes32', web3.utils.fromAscii(wrongPassphrase))
 
-    await dispatcherInstance.sendTransaction({
-      value: amount
-    })
+    await dispatcherInstance.sendTransaction({value: amount})
+    await sharedAccountInstance.lock(dispatcherInstance.address, {from: node})
 
     let accountBalanceBefore = new BigNumber(
       await web3.eth.getBalancePromise(dispatcherInstance.address))
@@ -101,14 +100,15 @@ contract('Accounts (Authentication)', function (accounts) {
     let newPassphraseHashed = web3.utils.sha3(newPassphraseEncoded)
 
     await dispatcherInstance.sendTransaction({
-      value: amount
-    })
+      value: amount})
 
     let accountBalanceBefore = new BigNumber(
       await web3.eth.getBalancePromise(dispatcherInstance.address))
 
     // Act
+    await sharedAccountInstance.lock(dispatcherInstance.address, {from: node})
     await dispatcherInstance.resetPassphrase(passphraseEncoded, newPassphraseHashed)
+    await sharedAccountInstance.lock(dispatcherInstance.address, {from: node})
     await dispatcherInstance.withdrawEtherTo(beneficiary, amount, newPassphraseEncoded, passphraseHashed)
 
     let accountBalanceAfter = new BigNumber(
@@ -124,24 +124,21 @@ contract('Accounts (Authentication)', function (accounts) {
     let beneficiary = accounts[accounts.length - 2]
     let amount = new BigNumber(web3.utils.toWei('1', 'ether'))
 
-    await sharedAccountInstance.lock(
-      dispatcherInstance.address, 
-      {from: beneficiary, value: lockStake})
-
     await dispatcherInstance.sendTransaction({value: amount})
+    await sharedAccountInstance.lock(dispatcherInstance.address, {from: beneficiary, value: lockStake})
     await dispatcherInstance.enable2fa(passphraseEncoded, passphraseHashed, {from: beneficiary})
 
     let accountBalanceBefore = new BigNumber(
       await web3.eth.getBalancePromise(beneficiary))
 
     // Act
-    let transaction2 = await dispatcherInstance.withdrawEther( 
+    let transaction = await dispatcherInstance.withdrawEther( 
       amount, 
       passphraseEncoded, 
       passphraseHashed,
       {from: beneficiary})
 
-    let transactionCosts = new BigNumber(await util.transaction.getTransactionCost(transaction2))
+    let transactionCosts = new BigNumber(await util.transaction.getTransactionCost(transaction))
     let accountBalanceAfter = new BigNumber(await web3.eth.getBalancePromise(beneficiary))
 
     // Assert
@@ -190,6 +187,7 @@ contract('Accounts (Authentication)', function (accounts) {
     await sharedAccountInstance.lock(dispatcherInstance.address, {from: beneficiary, value: lockStake})
     await dispatcherInstance.enable2fa(passphraseEncoded, passphraseHashed, {from: beneficiary})
     await dispatcherInstance.disable2fa(passphraseEncoded, passphraseHashed, {from: beneficiary})
+    await sharedAccountInstance.lock(dispatcherInstance.address, {from: node})
 
     let nodeBalanceBefore = new BigNumber(await web3.eth.getBalancePromise(node))
     let beneficiaryBalanceBefore = new BigNumber(await web3.eth.getBalancePromise(beneficiary))
