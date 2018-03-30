@@ -51,11 +51,14 @@ var _export = {
         }
     },
     transaction: {
+        getGasUsed: (transaction) => {
+            return new BigNumber(transaction.receipt.gasUsed)
+        },
         getGasPrice: async () => {
             return web3.eth.getGasPrice()
         },
         getTransactionCost: async (transaction) => {
-            return (new BigNumber(transaction.receipt.gasUsed)).mul(await _export.transaction.getGasPrice())
+            return (_export.transaction.getGasUsed(transaction)).mul(await _export.transaction.getGasPrice())
         }
     },
     errors: {

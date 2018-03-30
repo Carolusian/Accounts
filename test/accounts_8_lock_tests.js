@@ -31,6 +31,9 @@ var _config = require('../config')
 var config = _config.network.test
 
 contract('Accounts (Lock)', function (accounts) {
+  // Misc
+  let totalGasUsage
+
   // Contracts
   let dcorpAccountsInstance
   let dispatcherInstance
@@ -44,7 +47,8 @@ contract('Accounts (Lock)', function (accounts) {
   let lockDuration
   let node = accounts[1]
 
-  before(async function () {
+  before(async () => {
+    totalGasUsage = new BigNumber(0)
     dcorpAccountsInstance = await DCorpAccounts.deployed()
     sharedAccountInstance = MemberAccountShared.at(await dcorpAccountsInstance.shared.call())
     passphraseEncoded = web3.eth.abi.encodeParameter('bytes32', web3.utils.fromAscii(passphrase))
@@ -52,7 +56,7 @@ contract('Accounts (Lock)', function (accounts) {
     await sharedAccountInstance.addNode(node, true, 0, 1, 1)
   })
 
-  beforeEach(async function () {
+  beforeEach(async () => {
     let transaction = await dcorpAccountsInstance.createAccount(passphraseHashed)
     let log = await dcorpUtil.accounts.events.created.getLog(dcorpAccountsInstance, transaction)
     dispatcherInstance = MemberAccount.at(log.args.account)
@@ -60,15 +64,21 @@ contract('Accounts (Lock)', function (accounts) {
     lockDuration = new BigNumber(await sharedAccountInstance.lockDuration.call())
   })
 
+  after(() => {
+    console.log('Gas used: ' + totalGasUsage.toString())
+  })
+
   it('cannot obtain a lock when an account is already locked', async function () {
     // Arrange
     let account = accounts[accounts.length - 2]
     let other = accounts[accounts.length - 3]
-    
-    await sharedAccountInstance.lock(dispatcherInstance.address, {
-      from: account, 
-      value: lockStake
-    })
+
+    totalGasUsage = totalGasUsage.add(util.transaction.getGasUsed(
+      await sharedAccountInstance.lock(dispatcherInstance.address, {
+        from: account, 
+        value: lockStake
+      })
+    ))
 
     let before = await sharedAccountInstance.isLocked.call(dispatcherInstance.address)
     assert.isTrue(before, 'Account should be locked')
@@ -89,10 +99,12 @@ contract('Accounts (Lock)', function (accounts) {
     // Arrange
     let account = accounts[accounts.length - 2]
     
-    await sharedAccountInstance.lock(dispatcherInstance.address, {
-      from: account, 
-      value: lockStake
-    })
+    totalGasUsage = totalGasUsage.add(util.transaction.getGasUsed(
+      await sharedAccountInstance.lock(dispatcherInstance.address, {
+        from: account, 
+        value: lockStake
+      })
+    ))
 
     let before = await sharedAccountInstance.isLocked.call(dispatcherInstance.address)
     assert.isTrue(before, 'Account should be locked')
@@ -141,10 +153,12 @@ contract('Accounts (Lock)', function (accounts) {
     assert.isFalse(before, 'Account should not be locked')
 
     // Act
-    await sharedAccountInstance.lock(dispatcherInstance.address, {
-      from: account, 
-      value: lockStake
-    })
+    totalGasUsage = totalGasUsage.add(util.transaction.getGasUsed(
+      await sharedAccountInstance.lock(dispatcherInstance.address, {
+        from: account, 
+        value: lockStake
+      })
+    ))
 
     let after = await sharedAccountInstance.isLocked.call(
       dispatcherInstance.address)
@@ -159,9 +173,11 @@ contract('Accounts (Lock)', function (accounts) {
     assert.isFalse(before, 'Account should not be locked')
 
     // Act
-    await sharedAccountInstance.lock(dispatcherInstance.address, {
-      from: node
-    })
+    totalGasUsage = totalGasUsage.add(util.transaction.getGasUsed(
+      await sharedAccountInstance.lock(dispatcherInstance.address, {
+        from: node
+      })
+    ))
 
     let after = await sharedAccountInstance.isLocked.call(
       dispatcherInstance.address)
@@ -178,10 +194,12 @@ contract('Accounts (Lock)', function (accounts) {
     assert.isFalse(isLocked, 'Account should not be locked')
 
     // Act
-    await sharedAccountInstance.lock(dispatcherInstance.address, {
-      from: account, 
-      value: lockStake
-    })
+    totalGasUsage = totalGasUsage.add(util.transaction.getGasUsed(
+      await sharedAccountInstance.lock(dispatcherInstance.address, {
+        from: account, 
+        value: lockStake
+      })
+    ))
 
     let lock = await sharedAccountInstance.getLock.call(
       dispatcherInstance.address)
@@ -197,9 +215,11 @@ contract('Accounts (Lock)', function (accounts) {
     assert.isFalse(isLocked, 'Account should not be locked')
 
     // Act
-    await sharedAccountInstance.lock(dispatcherInstance.address, {
-      from: node
-    })
+    totalGasUsage = totalGasUsage.add(util.transaction.getGasUsed(
+      await sharedAccountInstance.lock(dispatcherInstance.address, {
+        from: node
+      })
+    ))
 
     let lock = await sharedAccountInstance.getLock.call(
       dispatcherInstance.address)
@@ -213,10 +233,12 @@ contract('Accounts (Lock)', function (accounts) {
     // Arrange
     let account = accounts[accounts.length - 2]
 
-    await sharedAccountInstance.lock(dispatcherInstance.address, {
-      from: account, 
-      value: lockStake
-    })
+    totalGasUsage = totalGasUsage.add(util.transaction.getGasUsed(
+      await sharedAccountInstance.lock(dispatcherInstance.address, {
+        from: account, 
+        value: lockStake
+      })
+    ))
 
     let before = await sharedAccountInstance.isLocked.call(dispatcherInstance.address)
     assert.isTrue(before, 'Account should be locked')
@@ -301,7 +323,8 @@ contract('Accounts (Lock)', function (accounts) {
     let amount = new BigNumber(web3.utils.toWei('1', 'ether'))
 
     await dispatcherInstance.sendTransaction({value: amount})
-    await sharedAccountInstance.lock(dispatcherInstance.address, {from: someone, value: lockStake})
+    totalGasUsage = totalGasUsage.add(util.transaction.getGasUsed(
+      await sharedAccountInstance.lock(dispatcherInstance.address, {from: someone, value: lockStake})))
 
     let accountBalanceBefore = new BigNumber(
       await web3.eth.getBalancePromise(dispatcherInstance.address))
@@ -331,7 +354,8 @@ contract('Accounts (Lock)', function (accounts) {
     let amount = new BigNumber(web3.utils.toWei('1', 'ether'))
 
     await dispatcherInstance.sendTransaction({value: amount})
-    await sharedAccountInstance.lock(dispatcherInstance.address, {from: someone, value: lockStake})
+    totalGasUsage = totalGasUsage.add(util.transaction.getGasUsed(
+      await sharedAccountInstance.lock(dispatcherInstance.address, {from: someone, value: lockStake})))
 
     let accountBalanceBefore = new BigNumber(
       await web3.eth.getBalancePromise(dispatcherInstance.address))
@@ -362,7 +386,9 @@ contract('Accounts (Lock)', function (accounts) {
     let amount = new BigNumber(web3.utils.toWei('1', 'ether'))
 
     await dispatcherInstance.sendTransaction({value: amount})
-    await sharedAccountInstance.lock(dispatcherInstance.address, {from: beneficiary, value: lockStake})
+    totalGasUsage = totalGasUsage.add(util.transaction.getGasUsed(
+      await sharedAccountInstance.lock(dispatcherInstance.address, {from: beneficiary, value: lockStake})))
+
     await web3.evm.increaseTimePromise(lockDuration.add('1'))
     await web3.evm.minePromise() // Workaround
 
@@ -394,17 +420,20 @@ contract('Accounts (Lock)', function (accounts) {
     let amount = new BigNumber(web3.utils.toWei('1', 'ether'))
 
     await dispatcherInstance.sendTransaction({value: amount})
-    await sharedAccountInstance.lock(dispatcherInstance.address, {from: beneficiary, value: lockStake})
+    totalGasUsage = totalGasUsage.add(util.transaction.getGasUsed(
+      await sharedAccountInstance.lock(dispatcherInstance.address, {from: beneficiary, value: lockStake})))
 
     let accountBalanceBefore = new BigNumber(
       await web3.eth.getBalancePromise(dispatcherInstance.address))
 
     // Act
-    await dispatcherInstance.withdrawEther(
-      amount, 
-      passphraseEncoded, 
-      passphraseHashed, 
-      {from: beneficiary})
+    totalGasUsage = totalGasUsage.add(util.transaction.getGasUsed(
+      await dispatcherInstance.withdrawEther(
+        amount, 
+        passphraseEncoded, 
+        passphraseHashed, 
+        {from: beneficiary}))
+    )
     
     let accountBalanceAfter = new BigNumber(
       await web3.eth.getBalancePromise(dispatcherInstance.address))
@@ -419,16 +448,19 @@ contract('Accounts (Lock)', function (accounts) {
     let amount = new BigNumber(web3.utils.toWei('1', 'ether'))
 
     await dispatcherInstance.sendTransaction({value: amount})
-    await sharedAccountInstance.lock(dispatcherInstance.address, {from: someone, value: lockStake})
-    await dispatcherInstance.enable2fa(passphraseEncoded, passphraseHashed, {from: someone})
-    await sharedAccountInstance.lock(dispatcherInstance.address, {from: someone, value: lockStake})
+    totalGasUsage = totalGasUsage.add(util.transaction.getGasUsed(
+      await sharedAccountInstance.lock(dispatcherInstance.address, {from: someone, value: lockStake})))
+    totalGasUsage = totalGasUsage.add(util.transaction.getGasUsed(
+      await dispatcherInstance.enable2fa(passphraseEncoded, passphraseHashed, {from: someone})))
+    totalGasUsage = totalGasUsage.add(util.transaction.getGasUsed(
+      await sharedAccountInstance.lock(dispatcherInstance.address, {from: someone, value: lockStake})))
 
     let accountBalanceBefore = new BigNumber(
       await web3.eth.getBalancePromise(dispatcherInstance.address))
 
     // Act
-    await dispatcherInstance.withdrawEther(
-      amount, passphraseEncoded, passphraseHashed, {from: someone})
+    totalGasUsage = totalGasUsage.add(util.transaction.getGasUsed(
+      await dispatcherInstance.withdrawEther(amount, passphraseEncoded, passphraseHashed, {from: someone})))
     
     let accountBalanceAfter = new BigNumber(
       await web3.eth.getBalancePromise(dispatcherInstance.address))
@@ -443,18 +475,21 @@ contract('Accounts (Lock)', function (accounts) {
     let amount = new BigNumber(web3.utils.toWei('1', 'ether'))
 
     await dispatcherInstance.sendTransaction({value: amount})
-    await sharedAccountInstance.lock(dispatcherInstance.address, {from: node})
+    totalGasUsage = totalGasUsage.add(util.transaction.getGasUsed(
+      await sharedAccountInstance.lock(dispatcherInstance.address, {from: node})))
 
     let accountBalanceBefore = new BigNumber(
       await web3.eth.getBalancePromise(dispatcherInstance.address))
 
     // Act
-    await dispatcherInstance.withdrawEtherTo(
-      beneficiary,
-      amount, 
-      passphraseEncoded, 
-      passphraseHashed, 
-      {from: node})
+    totalGasUsage = totalGasUsage.add(util.transaction.getGasUsed(
+      await dispatcherInstance.withdrawEtherTo(
+        beneficiary,
+        amount, 
+        passphraseEncoded, 
+        passphraseHashed, 
+        {from: node})
+    ))
     
     let accountBalanceAfter = new BigNumber(
       await web3.eth.getBalancePromise(dispatcherInstance.address))
@@ -469,14 +504,17 @@ contract('Accounts (Lock)', function (accounts) {
     let amount = new BigNumber(web3.utils.toWei('1', 'ether'))
 
     await dispatcherInstance.sendTransaction({value: amount})
-    await sharedAccountInstance.lock(dispatcherInstance.address, {from: beneficiary, value: lockStake})
+    totalGasUsage = totalGasUsage.add(util.transaction.getGasUsed(
+      await sharedAccountInstance.lock(dispatcherInstance.address, {from: beneficiary, value: lockStake})))
 
     // Act
-    await dispatcherInstance.withdrawEther(
-      amount, 
-      passphraseEncoded, 
-      passphraseHashed, 
-      {from: beneficiary})
+    totalGasUsage = totalGasUsage.add(util.transaction.getGasUsed(
+      await dispatcherInstance.withdrawEther(
+        amount, 
+        passphraseEncoded, 
+        passphraseHashed, 
+        {from: beneficiary})
+    ))
     
     let locked = await sharedAccountInstance.isLocked.call(
         dispatcherInstance.address)
@@ -492,8 +530,10 @@ contract('Accounts (Lock)', function (accounts) {
     let amount = new BigNumber(web3.utils.toWei('1', 'ether'))
 
     await dispatcherInstance.sendTransaction({value: amount})
-    await sharedAccountInstance.lock(dispatcherInstance.address, {from: account, value: lockStake})
-    await dispatcherInstance.enable2fa(passphraseEncoded, passphraseHashed, {from: account})
+    totalGasUsage = totalGasUsage.add(util.transaction.getGasUsed(
+      await sharedAccountInstance.lock(dispatcherInstance.address, {from: account, value: lockStake})))
+    totalGasUsage = totalGasUsage.add(util.transaction.getGasUsed(
+      await dispatcherInstance.enable2fa(passphraseEncoded, passphraseHashed, {from: account})))
 
     let locked = await sharedAccountInstance.isLocked.call(dispatcherInstance.address)
     assert.isFalse(locked, 'Account should not be locked')
@@ -502,12 +542,14 @@ contract('Accounts (Lock)', function (accounts) {
     let beneficiaryBalanceBefore = new BigNumber(await web3.eth.getBalancePromise(beneficiary))
 
     // Act
-    await dispatcherInstance.withdrawEtherTo(
-      beneficiary,
-      amount, 
-      passphraseEncoded, 
-      passphraseHashed, 
-      {from: account})
+    totalGasUsage = totalGasUsage.add(util.transaction.getGasUsed(
+      await dispatcherInstance.withdrawEtherTo(
+        beneficiary,
+        amount, 
+        passphraseEncoded, 
+        passphraseHashed, 
+        {from: account})
+    ))
     
     let accountBalanceAfter = new BigNumber(await web3.eth.getBalancePromise(dispatcherInstance.address))
     let beneficiaryBalanceAfter = new BigNumber(await web3.eth.getBalancePromise(beneficiary))

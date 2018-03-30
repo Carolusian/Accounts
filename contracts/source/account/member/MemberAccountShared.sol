@@ -17,16 +17,16 @@ contract MemberAccountShared is TransferableOwnership, IMemberAccountShared {
 
     struct Lock {
         address owner;
-        uint until;
-        uint stake;
+        uint128 until;
+        uint128 stake;
     }
 
     struct Node {
         bool enabled;
-        uint executionFeeModifier;
-        uint withdrawFeeModifier;
-        uint denominator;
-        uint index;
+        uint64 executionFeeModifier;
+        uint64 withdrawFeeModifier;
+        uint64 denominator;
+        uint64 index;
     }
 
     // Fees
@@ -52,8 +52,8 @@ contract MemberAccountShared is TransferableOwnership, IMemberAccountShared {
 
 
     // Events
-    event NodeAdded(address node, bool enabled, uint gas, uint withdrawFeeModifier, uint denominator);
-    event NodeUpdated(address node, bool enabled, uint gas, uint withdrawFeeModifier, uint denominator);
+    event NodeAdded(address node, bool enabled, uint gas, uint64 withdrawFeeModifier, uint64 denominator);
+    event NodeUpdated(address node, bool enabled, uint gas, uint64 withdrawFeeModifier, uint64 denominator);
     
 
     /**
@@ -300,7 +300,7 @@ contract MemberAccountShared is TransferableOwnership, IMemberAccountShared {
 
         // Obtain lock
         locks[_account] = Lock(
-            _owner, now + lockDuration, msg.value);
+            _owner, uint128(now + lockDuration), uint128(msg.value));
     }
 
 
@@ -329,12 +329,12 @@ contract MemberAccountShared is TransferableOwnership, IMemberAccountShared {
      * @param _withdrawFeeModifier Modifier applied to fees charged when withdrawing (100 eq the standard for the token that is withdrawn)
      * @param _denominator Precesion used to calculate fees
      */
-    function addNode(address _node, bool _enabled, uint _executionFeeModifier, uint _withdrawFeeModifier, uint _denominator) public only_owner {
+    function addNode(address _node, bool _enabled, uint64 _executionFeeModifier, uint64 _withdrawFeeModifier, uint64 _denominator) public only_owner {
         require(nodesIndex.length == 0 || _node != nodesIndex[nodes[_node].index]);
 
         // Add node
         nodes[_node] = Node(
-            _enabled, _executionFeeModifier, _withdrawFeeModifier, _denominator, nodesIndex.push(_node) - 1);
+            _enabled, _executionFeeModifier, _withdrawFeeModifier, _denominator, uint64(nodesIndex.push(_node) - 1));
 
         // Notify
         NodeAdded(_node, _enabled, _executionFeeModifier, _withdrawFeeModifier, _denominator);
@@ -350,7 +350,7 @@ contract MemberAccountShared is TransferableOwnership, IMemberAccountShared {
      * @param _withdrawFeeModifier Modifier applied to fees charged when withdrawing (100 eq the standard for the token that is withdrawn)
      * @param _denominator Precesion used to calculate fees
      */
-    function updateNode(address _node, bool _enabled, uint _executionFeeModifier, uint _withdrawFeeModifier, uint _denominator) public only_owner {
+    function updateNode(address _node, bool _enabled, uint64 _executionFeeModifier, uint64 _withdrawFeeModifier, uint64 _denominator) public only_owner {
         require(nodesIndex.length > 0 && _node == nodesIndex[nodes[_node].index]);
 
         // Update node
