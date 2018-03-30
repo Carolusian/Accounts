@@ -378,7 +378,7 @@ contract('Accounts (Initiation)', function (accounts) {
   it('owner can remove a node', async function () {
     // Arrange
     let owner = accounts[0]
-    let node = accounts[accounts.length - 1]
+    let node = accounts[accounts.length - 3]
 
     await sharedAccountInstance.addNode(
       node, true, 1, 1, 1, {from: owner})
@@ -402,7 +402,7 @@ contract('Accounts (Initiation)', function (accounts) {
     // Arrange
     let owner = accounts[0]
     let account = accounts[1]
-    let node = accounts[accounts.length - 1]
+    let node = accounts[accounts.length - 4]
 
     await sharedAccountInstance.addNode(
       node, true, 1, 1, 1, {from: owner})
