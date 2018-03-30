@@ -282,10 +282,10 @@ contract('Accounts (Lock)', function (accounts) {
       await web3.eth.getBalancePromise(dispatcherInstance.address))
 
     // Assert
-    assert.isTrue(accountBalanceAfter.eq(accountBalanceBefore), 'Ether was send from account')
+    assert.isTrue(accountBalanceAfter.eq(accountBalanceBefore), 'Ether was sent from account')
   })
 
-  it('node fails autentication when not locked', async function () {
+  it('node fails authentication when not locked', async function () {
     // Arrange
     let beneficiary = accounts[accounts.length - 2]
     let amount = new BigNumber(web3.utils.toWei('1', 'ether'))
@@ -313,10 +313,10 @@ contract('Accounts (Lock)', function (accounts) {
       await web3.eth.getBalancePromise(dispatcherInstance.address))
 
     // Assert
-    assert.isTrue(accountBalanceAfter.eq(accountBalanceBefore), 'Ether was send from account')
+    assert.isTrue(accountBalanceAfter.eq(accountBalanceBefore), 'Ether was sent from account')
   })
 
-  it('fails autentication when locked by someone else', async function () {
+  it('fails authentication when locked by someone else', async function () {
     // Arrange
     let beneficiary = accounts[accounts.length - 2]
     let someone = accounts[accounts.length - 3]
@@ -345,10 +345,10 @@ contract('Accounts (Lock)', function (accounts) {
       await web3.eth.getBalancePromise(dispatcherInstance.address))
 
     // Assert
-    assert.isTrue(accountBalanceAfter.eq(accountBalanceBefore), 'Ether was send from account')
+    assert.isTrue(accountBalanceAfter.eq(accountBalanceBefore), 'Ether was sent from account')
   })
 
-  it('node fails autentication when locked by someone else', async function () {
+  it('node fails authentication when locked by someone else', async function () {
     // Arrange
     let someone = accounts[accounts.length - 2]
     let amount = new BigNumber(web3.utils.toWei('1', 'ether'))
@@ -377,10 +377,10 @@ contract('Accounts (Lock)', function (accounts) {
       await web3.eth.getBalancePromise(dispatcherInstance.address))
 
     // Assert
-    assert.isTrue(accountBalanceAfter.eq(accountBalanceBefore), 'Ether was send from account')
+    assert.isTrue(accountBalanceAfter.eq(accountBalanceBefore), 'Ether was sent from account')
   })
 
-  it('fails autentication when lock was expired', async function () {
+  it('fails authentication when lock was expired', async function () {
     // Arrange
     let beneficiary = accounts[accounts.length - 2]
     let amount = new BigNumber(web3.utils.toWei('1', 'ether'))
@@ -411,7 +411,7 @@ contract('Accounts (Lock)', function (accounts) {
       await web3.eth.getBalancePromise(dispatcherInstance.address))
 
     // Assert
-    assert.isTrue(accountBalanceAfter.eq(accountBalanceBefore), 'Ether was send from account')
+    assert.isTrue(accountBalanceAfter.eq(accountBalanceBefore), 'Ether was sent from account')
   })
 
   it('authenticates when locked', async function () {
@@ -439,7 +439,7 @@ contract('Accounts (Lock)', function (accounts) {
       await web3.eth.getBalancePromise(dispatcherInstance.address))
 
     // Assert
-    assert.isTrue(accountBalanceAfter.eq(accountBalanceBefore.sub(amount).sub(lockStake)), 'Ether was not send from account')
+    assert.isTrue(accountBalanceAfter.eq(accountBalanceBefore.sub(amount).sub(lockStake)), 'Ether was not sent from account')
   })
 
   it('2fa authenticates when locked', async function () {
@@ -466,7 +466,7 @@ contract('Accounts (Lock)', function (accounts) {
       await web3.eth.getBalancePromise(dispatcherInstance.address))
 
     // Assert
-    assert.isTrue(accountBalanceAfter.eq(accountBalanceBefore.sub(amount)), 'Ether was not send from account')
+    assert.isTrue(accountBalanceAfter.eq(accountBalanceBefore.sub(amount)), 'Ether was not sent from account')
   })
 
   it('authenticates when locked and called from a node', async function () {

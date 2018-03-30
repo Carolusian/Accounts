@@ -175,7 +175,7 @@ contract('Accounts (Authentication)', function (accounts) {
       await web3.eth.getBalancePromise(beneficiary))
 
     // Assert
-    assert.isTrue(accountBalanceAfter.eq(accountBalanceBefore), 'Ether was send from account')
+    assert.isTrue(accountBalanceAfter.eq(accountBalanceBefore), 'Ether was sent from account')
   })
 
   it('disables 2fa', async function () {

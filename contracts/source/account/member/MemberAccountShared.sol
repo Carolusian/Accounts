@@ -348,7 +348,7 @@ contract MemberAccountShared is TransferableOwnership, IMemberAccountShared {
      * @param _enabled Whether the node is enabled or not
      * @param _executionFeeModifier Modifier applied to fees charged when executing (100 eq msg.gas)
      * @param _withdrawFeeModifier Modifier applied to fees charged when withdrawing (100 eq the standard for the token that is withdrawn)
-     * @param _denominator Precesion used to calculate fees
+     * @param _denominator Precision used to calculate fees
      */
     function updateNode(address _node, bool _enabled, uint64 _executionFeeModifier, uint64 _withdrawFeeModifier, uint64 _denominator) public only_owner {
         require(nodesIndex.length > 0 && _node == nodesIndex[nodes[_node].index]);

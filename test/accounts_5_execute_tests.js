@@ -143,7 +143,7 @@ contract('Accounts (Execute)', function (accounts) {
     }
   })
 
-  it('does not execute a call to an exlcuded target', async function () {
+  it('does not execute a call to an excluded target', async function () {
     // Arrange
     let account = accounts[accounts.length - 1]
     let amount = web3.utils.toWei('1', 'ether')
