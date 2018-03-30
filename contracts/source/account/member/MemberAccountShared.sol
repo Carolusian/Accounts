@@ -119,7 +119,7 @@ contract MemberAccountShared is TransferableOwnership, IMemberAccountShared {
      * @return Wether the withdraw is valid
      */
     function isValidTokenWithdraw(address _token, address _to, uint _value) public view returns (bool) {
-        return _to != address(this) && _value >= getMinTokenWithdrawAmount(_token);
+        return _to != address(this) && _value >= (minTokenWithdrawAmountOverwrites[_token] > 0 ? minTokenWithdrawAmountOverwrites[_token] : minTokenWithdrawAmount);
     }
 
 
@@ -291,7 +291,7 @@ contract MemberAccountShared is TransferableOwnership, IMemberAccountShared {
         require(locks[_account].until < now); // Not currently locked
 
         // Handle stake (nodes are ommited)
-        if (msg.sender != _owner || !isNode(msg.sender)) {
+        if (msg.sender != _owner || !nodes[msg.sender].enabled) {
             require(msg.value >= lockStake); // Sufficient stake
 
             // Return stake to account
@@ -330,6 +330,9 @@ contract MemberAccountShared is TransferableOwnership, IMemberAccountShared {
      * @param _denominator Precesion used to calculate fees
      */
     function addNode(address _node, bool _enabled, uint _executionFeeModifier, uint _withdrawFeeModifier, uint _denominator) public only_owner {
+        require(nodesIndex.length == 0 || _node != nodesIndex[nodes[_node].index]);
+
+        // Add node
         nodes[_node] = Node(
             _enabled, _executionFeeModifier, _withdrawFeeModifier, _denominator, nodesIndex.push(_node) - 1);
 
@@ -348,7 +351,7 @@ contract MemberAccountShared is TransferableOwnership, IMemberAccountShared {
      * @param _denominator Precesion used to calculate fees
      */
     function updateNode(address _node, bool _enabled, uint _executionFeeModifier, uint _withdrawFeeModifier, uint _denominator) public only_owner {
-        require(nodes[_node].index < nodesIndex.length && _node == nodesIndex[nodes[_node].index]);
+        require(nodesIndex.length > 0 && _node == nodesIndex[nodes[_node].index]);
 
         // Update node
         Node storage node = nodes[_node];
