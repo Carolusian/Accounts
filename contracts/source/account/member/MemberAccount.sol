@@ -33,7 +33,7 @@ contract MemberAccount is Dispatchable, IAccount, IEtherAccount, ITokenAccount, 
 
     /**
      * Hashed version of the password, updated 
-     * after each successfull match
+     * after each successful match
      */
     bytes32 internal passphraseHash;
 
@@ -43,7 +43,7 @@ contract MemberAccount is Dispatchable, IAccount, IEtherAccount, ITokenAccount, 
      * 
      * Basic (required)
      * Compares the provided password to the stored hash of the password. The 
-     * passphrase is updated after each successfull authentication to prevent 
+     * passphrase is updated after each successful authentication to prevent 
      * a replay attack. 
      *
      * 2FA (optional)
@@ -123,7 +123,7 @@ contract MemberAccount is Dispatchable, IAccount, IEtherAccount, ITokenAccount, 
     /**
      * Replace the hashed passphrase
      *
-     * @param _passphrase Raw passphrasse 
+     * @param _passphrase Raw passphrase 
      * @param _passphraseHash Hash of the new passphrase 
      */
     function resetPassphrase(bytes32 _passphrase, bytes32 _passphraseHash) public charge(msg.gas, 0) authenticate(_passphrase, _passphraseHash) {
@@ -134,7 +134,7 @@ contract MemberAccount is Dispatchable, IAccount, IEtherAccount, ITokenAccount, 
     /**
      * Calls will only be accepted from `_authorizedAccount` only
      *
-     * @param _passphrase Raw passphrasse 
+     * @param _passphrase Raw passphrase 
      * @param _passphraseHash Hash of the new passphrase 
      */
     function enable2fa(bytes32 _passphrase, bytes32 _passphraseHash) public charge(msg.gas, 0) authenticate(_passphrase, _passphraseHash) {
@@ -145,7 +145,7 @@ contract MemberAccount is Dispatchable, IAccount, IEtherAccount, ITokenAccount, 
     /**
      * Calls will only be accepted from anyone
      *
-     * @param _passphrase Raw passphrasse 
+     * @param _passphrase Raw passphrase 
      * @param _passphraseHash Hash of the new passphrase 
      */
     function disable2fa(bytes32 _passphrase, bytes32 _passphraseHash) public charge(msg.gas, 0) authenticate(_passphrase, _passphraseHash) {
